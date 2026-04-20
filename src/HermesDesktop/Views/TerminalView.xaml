@@ -11,6 +11,10 @@
                         Foreground="{DynamicResource TextPrimary}" Background="Transparent" BorderThickness="0"
                         Padding="10,4" Cursor="Hand" Command="{Binding NewTabCommand}"
                         ToolTip="New terminal tab"/>
+                <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding AvailableThemeStyles}"
+                          SelectedItem="{Binding CurrentThemeStyle}" Width="120" Margin="0,0,8,0"
+                          VerticalContentAlignment="Center" FontSize="11"
+                          ToolTip="Terminal theme"/>
                 <ItemsControl ItemsSource="{Binding Tabs}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>

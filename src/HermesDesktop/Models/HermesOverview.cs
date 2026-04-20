@@ -21,6 +21,32 @@ public class HermesOverview
 
     [JsonPropertyName("python_version")]
     public string? PythonVersion { get; set; }
+
+    [JsonPropertyName("hermes_home")]
+    public string? HermesHome { get; set; }
+
+    [JsonPropertyName("profile_name")]
+    public string? ProfileName { get; set; }
+
+    [JsonPropertyName("available_profiles")]
+    public List<RemoteHermesProfile> AvailableProfiles { get; set; } = new();
+}
+
+public class RemoteHermesProfile
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("path")]
+    public string Path { get; set; } = string.Empty;
+
+    [JsonPropertyName("is_default")]
+    public bool IsDefault { get; set; }
+
+    [JsonPropertyName("exists")]
+    public bool Exists { get; set; }
+
+    public string DisplayName => IsDefault ? "default" : Name;
 }
 
 public class TrackedFile

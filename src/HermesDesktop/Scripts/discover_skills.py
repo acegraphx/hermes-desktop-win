@@ -1,20 +1,3 @@
-import json
-import os
-import pathlib
-import sys
-
-def fail(message):
-    print(json.dumps({"ok": False, "error": message}, ensure_ascii=False))
-    sys.exit(1)
-
-def normalize_text(v):
-    if v is None:
-        return None
-    if isinstance(v, bytes):
-        v = v.decode("utf-8", errors="replace")
-    v = str(v).strip()
-    return v or None
-
 def extract_frontmatter(content):
     lines = content.splitlines()
     if not lines or lines[0].strip() != "---":
@@ -43,7 +26,6 @@ def parse_frontmatter(content, rel_path):
     if fm_text:
         fm_lines = fm_text.splitlines()
 
-        # Try yaml import
         try:
             import yaml
             data = yaml.safe_load(fm_text)
@@ -60,12 +42,10 @@ def parse_frontmatter(content, rel_path):
         except Exception:
             pass
 
-        # Fallback: manual parse
         name = parse_key_value(fm_lines, "name") or name
         description = parse_key_value(fm_lines, "description")
         version = parse_key_value(fm_lines, "version")
 
-    # Derive category from directory structure
     parts = list(rel_path.parent.parts)
     if len(parts) > 1:
         category = parts[0]
@@ -73,7 +53,7 @@ def parse_frontmatter(content, rel_path):
     return name, description, version, category, tags
 
 try:
-    root = pathlib.Path.home() / ".hermes" / "skills"
+    root = resolved_hermes_home() / "skills"
     if not root.exists():
         print(json.dumps({"ok": True, "items": []}, ensure_ascii=False))
         sys.exit(0)

@@ -1,19 +1,10 @@
-import json
-import os
-import pathlib
-import sys
-
-def fail(message):
-    print(json.dumps({"ok": False, "error": message}, ensure_ascii=False))
-    sys.exit(1)
-
 try:
     relative_path = payload.get("relative_path", "")
     normalized = pathlib.PurePosixPath(relative_path)
     if normalized.is_absolute() or ".." in normalized.parts or not normalized.parts:
         fail("The requested skill path is invalid.")
 
-    root = (pathlib.Path.home() / ".hermes" / "skills").resolve()
+    root = (resolved_hermes_home() / "skills").resolve()
     target = (root / pathlib.Path(*normalized.parts) / "SKILL.md").resolve()
 
     try:

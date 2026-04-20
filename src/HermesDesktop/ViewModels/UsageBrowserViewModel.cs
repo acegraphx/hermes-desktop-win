@@ -29,7 +29,19 @@ public partial class UsageBrowserViewModel : ObservableObject
     [ObservableProperty]
     private long _outputTokens;
 
+    [ObservableProperty]
+    private long _cacheReadTokens;
+
+    [ObservableProperty]
+    private long _cacheWriteTokens;
+
+    [ObservableProperty]
+    private long _reasoningTokens;
+
     public long TotalTokens => InputTokens + OutputTokens;
+
+    public long AllTokenCategoriesTotal =>
+        InputTokens + OutputTokens + CacheReadTokens + CacheWriteTokens + ReasoningTokens;
 
     public string AveragePerSession => SessionCount > 0
         ? $"{(InputTokens + OutputTokens) / SessionCount:N0}"
@@ -81,7 +93,11 @@ public partial class UsageBrowserViewModel : ObservableObject
             SessionCount = result.SessionCount;
             InputTokens = result.InputTokens;
             OutputTokens = result.OutputTokens;
+            CacheReadTokens = result.CacheReadTokens;
+            CacheWriteTokens = result.CacheWriteTokens;
+            ReasoningTokens = result.ReasoningTokens;
             OnPropertyChanged(nameof(TotalTokens));
+            OnPropertyChanged(nameof(AllTokenCategoriesTotal));
 
             TopSessions = new ObservableCollection<UsageTopSession>(result.TopSessions ?? new());
             TopModels = new ObservableCollection<UsageTopModel>(result.TopModels ?? new());
@@ -120,6 +136,15 @@ public class UsageResponse
 
     [JsonPropertyName("output_tokens")]
     public long OutputTokens { get; set; }
+
+    [JsonPropertyName("cache_read_tokens")]
+    public long CacheReadTokens { get; set; }
+
+    [JsonPropertyName("cache_write_tokens")]
+    public long CacheWriteTokens { get; set; }
+
+    [JsonPropertyName("reasoning_tokens")]
+    public long ReasoningTokens { get; set; }
 
     [JsonPropertyName("top_sessions")]
     public List<UsageTopSession>? TopSessions { get; set; }

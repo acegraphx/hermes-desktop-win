@@ -35,6 +35,9 @@
             <DataTemplate DataType="{x:Type vm:SkillBrowserViewModel}">
                 <views:SkillBrowserView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:CronJobsViewModel}">
+                <views:CronJobsView/>
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:TerminalViewModel}">
                 <views:TerminalView/>
             </DataTemplate>

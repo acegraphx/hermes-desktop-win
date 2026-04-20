@@ -1,12 +1,4 @@
 import hashlib
-import json
-import os
-import pathlib
-import sys
-
-def fail(message):
-    print(json.dumps({"ok": False, "error": message}, ensure_ascii=False))
-    sys.exit(1)
 
 try:
     target = pathlib.Path(os.path.expanduser(payload["path"]))

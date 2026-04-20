@@ -1,0 +1,349 @@
+<UserControl x:Class="HermesDesktop.Views.CronJobsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Cron Jobs" FontSize="22" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                <Button Content="New Job" Command="{Binding NewJobCommand}" Margin="0,0,8,0"
+                        Style="{StaticResource AccentButton}"/>
+                <Button Content="Refresh" Command="{Binding RefreshCommand}"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Search + status -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                     Padding="8,6" FontSize="13"/>
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource LinkForeground}"
+                       Margin="0,6,0,0"
+                       Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#E46362" Margin="0,6,0,0"
+                       Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}"/>
+        </StackPanel>
+
+        <!-- Main content grid: list + editor -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="2*" MinWidth="0"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Job list -->
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="Loading..." Foreground="{DynamicResource TextTertiary}"
+                           Margin="0,0,0,8"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+                <ListView ItemsSource="{Binding FilteredJobs}" SelectedItem="{Binding SelectedJob}"
+                          BorderThickness="0" Background="Transparent"
+                          HorizontalContentAlignment="Stretch"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
+                                    BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1"
+                                    Padding="12" Margin="0,0,4,8">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock Text="{Binding ResolvedName}" FontSize="14" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextPrimary}"/>
+                                        <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                                Background="{DynamicResource BadgePrimaryBackground}" CornerRadius="3" Padding="8,2">
+                                            <TextBlock Text="{Binding DisplayState}" FontSize="10"
+                                                       Foreground="{DynamicResource BadgePrimaryForeground}"/>
+                                        </Border>
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding ResolvedScheduleDisplay}" FontSize="12"
+                                               Foreground="{DynamicResource TextTertiary}" Margin="0,4,0,0"/>
+                                    <TextBlock Text="{Binding PreviewPrompt}" FontSize="12"
+                                               Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                                               Margin="0,6,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </DockPanel>
+
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch" Background="{DynamicResource SplitterBrush}" Margin="8,0"
+                          Visibility="{Binding IsRightPanelVisible, Converter={StaticResource BoolToVisibility}}"/>
+
+            <!-- Read-only detail panel (visible when a job is selected and not editing) -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
+                          Visibility="{Binding IsDetailVisible, Converter={StaticResource BoolToVisibility}}">
+                <Border Background="{DynamicResource CardBackground}" CornerRadius="6" Padding="16"
+                        BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1">
+                    <StackPanel DataContext="{Binding SelectedJob}">
+                        <!-- Header -->
+                        <DockPanel Margin="0,0,0,12">
+                            <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                    Background="{DynamicResource BadgePrimaryBackground}" CornerRadius="3" Padding="8,2"
+                                    VerticalAlignment="Top">
+                                <TextBlock Text="{Binding DisplayState}" FontSize="10"
+                                           Foreground="{DynamicResource BadgePrimaryForeground}"/>
+                            </Border>
+                            <TextBlock Text="{Binding ResolvedName}" FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                        </DockPanel>
+
+                        <!-- Action bar -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <Button Content="Edit" Margin="0,0,6,0" Padding="12,4"
+                                    Style="{StaticResource AccentButton}"
+                                    Command="{Binding DataContext.EditJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                            <Button Content="Run Now" Margin="0,0,6,0" Padding="12,4"
+                                    Command="{Binding DataContext.RunJobNowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                            <Button Content="Pause" Margin="0,0,6,0" Padding="12,4"
+                                    Command="{Binding DataContext.PauseJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"
+                                    Visibility="{Binding IsPaused, Converter={StaticResource InverseBoolToVisibility}}"/>
+                            <Button Content="Resume" Margin="0,0,6,0" Padding="12,4"
+                                    Command="{Binding DataContext.ResumeJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"
+                                    Visibility="{Binding IsPaused, Converter={StaticResource BoolToVisibility}}"/>
+                            <Button Content="Delete" Margin="0,0,6,0" Padding="12,4"
+                                    Style="{StaticResource DangerButton}"
+                                    Command="{Binding DataContext.DeleteJobCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}"/>
+                            <Button Content="Close" Padding="12,4"
+                                    Command="{Binding DataContext.CloseDetailCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        </StackPanel>
+
+                        <!-- Schedule -->
+                        <TextBlock Text="Schedule" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBlock Text="{Binding ResolvedScheduleDisplay}" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" Margin="0,4,0,12"/>
+
+                        <!-- Prompt -->
+                        <TextBlock Text="Prompt" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <Border Background="{DynamicResource PanelBackground}" CornerRadius="4"
+                                BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1"
+                                Padding="10" Margin="0,4,0,12">
+                            <TextBlock Text="{Binding Prompt}" FontSize="13"
+                                       Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"
+                                       FontFamily="Consolas"/>
+                        </Border>
+
+                        <!-- Skills -->
+                        <TextBlock Text="Skills" FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                                   Visibility="{Binding Skills.Count, Converter={StaticResource NullToVisibility}}"/>
+                        <ItemsControl ItemsSource="{Binding Skills}" Margin="0,4,0,12">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3"
+                                            Padding="8,2" Margin="0,0,4,4">
+                                        <TextBlock Text="{Binding}" FontSize="11"
+                                                   Foreground="{DynamicResource BadgeInfoForeground}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Metadata grid -->
+                        <Grid Margin="0,0,0,12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Job ID" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Id}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" FontFamily="Consolas" Margin="0,3"
+                                       TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Model" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Model, TargetNullValue='—'}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,3" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Provider" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Provider, TargetNullValue='—'}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,3" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Base URL" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding BaseUrl, TargetNullValue='—'}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,3" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Delivery" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding DeliveryTarget, TargetNullValue='—'}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,3" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Next run" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding NextRunAt, TargetNullValue='—'}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,3" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Last run" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding LastRunAt, TargetNullValue='—'}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,3" TextTrimming="CharacterEllipsis"/>
+
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Last status" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,3"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding LastStatus, TargetNullValue='—'}" FontSize="12"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,3" TextWrapping="Wrap"/>
+                        </Grid>
+
+                        <!-- Last error (only if present) -->
+                        <TextBlock Text="Last error" FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                                   Visibility="{Binding LastError, Converter={StaticResource NullToVisibility}}"/>
+                        <TextBlock Text="{Binding LastError}" FontSize="12" Foreground="#E46362"
+                                   TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Visibility="{Binding LastError, Converter={StaticResource NullToVisibility}}"/>
+                    </StackPanel>
+                </Border>
+            </ScrollViewer>
+
+            <!-- Editor panel -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
+                          Visibility="{Binding IsEditorVisible, Converter={StaticResource BoolToVisibility}}">
+                <Border Background="{DynamicResource CardBackground}" CornerRadius="6" Padding="16"
+                        BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="{Binding EditorTitle}" FontSize="18" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Title" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftName, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
+                                 Margin="0,4,0,12"/>
+
+                        <TextBlock Text="Prompt" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftPrompt, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
+                                 VerticalScrollBarVisibility="Auto" Margin="0,4,0,12"/>
+
+                        <TextBlock Text="Skills (comma-separated)" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftSkills, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
+                                 Margin="0,4,0,12"/>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                <TextBlock Text="Model" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBox Text="{Binding DraftModel, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                <TextBlock Text="Provider" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBox Text="{Binding DraftProvider, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Base URL (optional)" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftBaseUrl, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,4,0,12"/>
+
+                        <TextBlock Text="Delivery target" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <ComboBox ItemsSource="{Binding DeliveryPresets}" SelectedItem="{Binding DraftDeliveryPreset}"
+                                  Padding="8,6" Margin="0,4,0,8"/>
+                        <TextBox Text="{Binding DraftCustomDelivery, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="8,6" Margin="0,0,0,12"
+                                 ToolTip="Custom target (when 'Custom Target' is selected)"/>
+
+                        <TextBlock Text="Schedule" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <ComboBox ItemsSource="{Binding SchedulePresets}" SelectedItem="{Binding DraftSchedulePreset}"
+                                  Padding="8,6" Margin="0,4,0,8"/>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <TextBlock Text="Hour" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBox Text="{Binding DraftHour, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="4,0,4,0">
+                                <TextBlock Text="Minute" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBox Text="{Binding DraftMinute, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="4,0,0,0">
+                                <TextBlock Text="Weekday (0=Sun)" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBox Text="{Binding DraftWeekday, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                <TextBlock Text="Day of month" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBox Text="{Binding DraftDayOfMonth, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="4,0,4,0">
+                                <TextBlock Text="Interval value" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                                <TextBox Text="{Binding DraftIntervalValue, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="4,0,0,0">
+                                <TextBlock Text="Interval unit" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                                <ComboBox ItemsSource="{Binding IntervalUnits}" SelectedItem="{Binding DraftIntervalUnit}" Padding="8,6"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Custom expression (for Custom preset)" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftCustomExpression, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
+                                 FontFamily="Consolas" Margin="0,4,0,8"/>
+
+                        <TextBlock Text="Timezone (optional, e.g. America/New_York)" FontSize="10" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftTimezone, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
+                                 Margin="0,4,0,12"/>
+
+                        <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="4" Padding="10"
+                                Margin="0,0,0,12">
+                            <TextBlock Foreground="{DynamicResource BadgeInfoForeground}" FontSize="12">
+                                <Run Text="Summary: "/>
+                                <Run Text="{Binding DraftSummary, Mode=OneWay}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                        </Border>
+
+                        <TextBlock Text="{Binding EditorError}" Foreground="#E46362" FontSize="12"
+                                   TextWrapping="Wrap" Margin="0,0,0,8"
+                                   Visibility="{Binding EditorError, Converter={StaticResource NullToVisibility}}"/>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Save" Command="{Binding SaveJobCommand}"
+                                    Style="{StaticResource AccentButton}" Margin="0,0,8,0"/>
+                            <Button Content="Cancel" Command="{Binding CancelEditorCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

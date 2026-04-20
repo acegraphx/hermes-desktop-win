@@ -40,26 +40,27 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
         Dictionary<string, object>? parameters,
         CancellationToken ct)
     {
-        var script = LoadScript(scriptName);
+        var body = LoadScript(scriptName);
 
-        // Inject parameters as a `payload` global variable (matches macOS app pattern)
-        if (parameters is { Count: > 0 })
-        {
-            var paramsJson = JsonSerializer.Serialize(parameters);
-            script = $"import json as _json\npayload = _json.loads({PythonStringLiteral(paramsJson)})\n" + script;
-        }
-        else
-        {
-            script = "payload = {}\n" + script;
-        }
+        var payload = parameters is null
+            ? new Dictionary<string, object>()
+            : new Dictionary<string, object>(parameters);
+
+        payload.TryAdd("hermes_home", profile.RemoteHermesHomePath);
+        payload.TryAdd("profile_name", profile.ResolvedHermesProfileName);
+
+        var paramsJson = JsonSerializer.Serialize(payload);
+        var payloadBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(paramsJson));
+
+        var script = BuildScript(body, payloadBase64);
 
         var scriptBytes = Encoding.UTF8.GetBytes(script);
         var base64Script = Convert.ToBase64String(scriptBytes);
 
-        // Build the remote command: decode base64 and pipe to python3
         var command = $"printf '%s' '{base64Script}' | base64 -d | python3 -";
 
-        _logger.LogDebug("Executing remote script: {Script}", scriptName);
+        _logger.LogDebug("Executing remote script: {Script} (hermes_home={Home})",
+            scriptName, profile.RemoteHermesHomePath);
 
         var result = await _ssh.ExecuteCommandAsync(
             profile, command, ct, TimeSpan.FromSeconds(60));
@@ -74,12 +75,174 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
         return result.StandardOutput;
     }
 
-    private static string PythonStringLiteral(string value)
+    private static string BuildScript(string body, string payloadBase64)
     {
-        // Use triple-quoted raw string to safely embed JSON
-        var escaped = value.Replace("\\", "\\\\").Replace("'", "\\'");
-        return $"'{escaped}'";
+        // Matches upstream RemotePythonScript.swift: wraps body with shared helpers
+        // and decodes payload from base64.
+        return $@"import base64
+import json
+import os
+import pathlib
+import sys
+
+payload = json.loads(base64.b64decode(""{payloadBase64}"").decode(""utf-8""))
+
+{SharedHelpers}
+
+{body}
+";
     }
+
+    // Mirror of upstream RemotePythonScript.sharedHelpers. Keep in sync.
+    private const string SharedHelpers = @"
+def fail(message):
+    print(json.dumps({
+        ""ok"": False,
+        ""error"": message,
+    }, ensure_ascii=False))
+    sys.exit(1)
+
+def stringify(value):
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        return value.decode(""utf-8"", errors=""replace"")
+    return str(value)
+
+def normalize_text(value):
+    text = stringify(value)
+    if text is None:
+        return None
+    text = text.strip()
+    return text or None
+
+def choose_table(tables, needle):
+    lowered = needle.lower()
+    for name in tables:
+        if name.lower() == lowered:
+            return name
+    for name in tables:
+        if lowered in name.lower():
+            return name
+    return None
+
+def choose_column(columns, choices):
+    lowered = {column.lower(): column for column in columns}
+    for choice in choices:
+        if choice.lower() in lowered:
+            return lowered[choice.lower()]
+    for choice in choices:
+        for column in columns:
+            if choice.lower() in column.lower():
+                return column
+    return None
+
+def quote_ident(value):
+    return '""' + str(value).replace('""', '""""') + '""'
+
+def quote_text(value):
+    return ""'"" + str(value).replace(""'"", ""''"") + ""'""
+
+def expand_remote_path(value, home=None):
+    if home is None:
+        home = pathlib.Path.home()
+    normalized = normalize_text(value)
+    if normalized is None:
+        return None
+    if normalized == ""~"":
+        return home
+    if normalized.startswith(""~/""):
+        return home / normalized[2:]
+    return pathlib.Path(normalized)
+
+def resolved_hermes_home(request=None):
+    request_data = payload if request is None else request
+    home = pathlib.Path.home()
+    expanded = expand_remote_path(request_data.get(""hermes_home"") if isinstance(request_data, dict) else None, home)
+    if expanded is not None:
+        return expanded
+    return home / "".hermes""
+
+def tilde(path, home=None):
+    if home is None:
+        home = pathlib.Path.home()
+    try:
+        relative = path.relative_to(home)
+        return ""~/"" + relative.as_posix() if relative.as_posix() != ""."" else ""~""
+    except ValueError:
+        return path.as_posix()
+
+def iter_session_store_candidates(hermes_home, home=None, hinted_path=None):
+    if home is None:
+        home = pathlib.Path.home()
+
+    seen = set()
+
+    def emit(candidate):
+        if candidate is None:
+            return None
+        resolved = str(candidate)
+        if resolved in seen or not candidate.is_file():
+            return None
+        seen.add(resolved)
+        return candidate
+
+    hinted_candidate = emit(expand_remote_path(hinted_path, home))
+    if hinted_candidate is not None:
+        yield hinted_candidate
+
+    preferred = [
+        hermes_home / ""state.db"",
+        hermes_home / ""state.sqlite"",
+        hermes_home / ""state.sqlite3"",
+        hermes_home / ""store.db"",
+        hermes_home / ""store.sqlite"",
+        hermes_home / ""store.sqlite3"",
+    ]
+
+    for candidate in preferred:
+        candidate = emit(candidate)
+        if candidate is not None:
+            yield candidate
+
+    try:
+        extras = sorted(
+            [
+                item
+                for pattern in (""*.db"", ""*.sqlite"", ""*.sqlite3"")
+                for item in hermes_home.glob(pattern)
+                if item.is_file()
+            ],
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+    except Exception:
+        extras = []
+    for candidate in extras:
+        candidate = emit(candidate)
+        if candidate is not None:
+            yield candidate
+
+    sessions_dir = hermes_home / ""sessions""
+    if sessions_dir.exists():
+        try:
+            nested = sorted(
+                [
+                    item
+                    for pattern in (""*.db"", ""*.sqlite"", ""*.sqlite3"")
+                    for item in sessions_dir.rglob(pattern)
+                    if item.is_file()
+                ],
+                key=lambda item: item.stat().st_mtime,
+                reverse=True,
+            )
+        except Exception:
+            nested = []
+        for candidate in nested:
+            candidate = emit(candidate)
+            if candidate is not None:
+                yield candidate
+";
 
     private string LoadScript(string scriptName)
     {

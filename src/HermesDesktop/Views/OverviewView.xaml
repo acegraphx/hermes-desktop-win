@@ -37,7 +37,39 @@
 
                 <TextBlock Text="Session Store" FontSize="12" Foreground="{DynamicResource TextTertiary}"/>
                 <TextBlock Text="{Binding Overview.SessionStore}" FontSize="14"
-                           Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,20"/>
+                           Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,12"/>
+
+                <TextBlock Text="Active Hermes Profile" FontSize="12" Foreground="{DynamicResource TextTertiary}"
+                           Visibility="{Binding Overview.ProfileName, Converter={StaticResource NullToVisibility}}"/>
+                <TextBlock Text="{Binding Overview.ProfileName}" FontSize="14"
+                           Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,12"
+                           Visibility="{Binding Overview.ProfileName, Converter={StaticResource NullToVisibility}}"/>
+
+                <TextBlock Text="Available Profiles" FontSize="16" FontWeight="Medium"
+                           Foreground="{DynamicResource TextPrimary}" Margin="0,4,0,8"
+                           Visibility="{Binding HasMultipleProfiles, Converter={StaticResource BoolToVisibility}}"/>
+                <ItemsControl ItemsSource="{Binding Overview.AvailableProfiles}" Margin="0,0,0,20"
+                              Visibility="{Binding HasMultipleProfiles, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource CardBackground}" CornerRadius="4"
+                                    BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1"
+                                    Padding="10,6" Margin="0,0,0,4">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Switch" FontSize="11" Padding="8,2"
+                                            Command="{Binding DataContext.SwitchProfileCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding Name}"/>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium"
+                                                   Foreground="{DynamicResource TextPrimary}"/>
+                                        <TextBlock Text="{Binding Path}" FontSize="11"
+                                                   Foreground="{DynamicResource TextTertiary}" FontFamily="Consolas"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <TextBlock Text="Tracked Files" FontSize="16" FontWeight="Medium"
                            Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>

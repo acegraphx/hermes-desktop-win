@@ -88,6 +88,15 @@ public partial class TerminalView : UserControl
         // Wait a moment for WebView2 to finish initializing
         await Task.Delay(500);
         control.AttachSession(tab.Session.Stream, tab.Session.Client);
+
+        if (_vm is not null)
+        {
+            try
+            {
+                await control.ApplyThemeAsync(_vm.ResolveCurrentAppearance());
+            }
+            catch { /* best-effort theme application */ }
+        }
     }
 
     private void TerminalHostGrid_MouseDown(object sender, MouseButtonEventArgs e)

@@ -1,53 +1,19 @@
-import json
-import os
-import pathlib
 import sqlite3
-import sys
-
-def fail(message):
-    print(json.dumps({"ok": False, "error": message}, ensure_ascii=False))
-    sys.exit(1)
-
-def choose_table(tables, needle):
-    lowered = needle.lower()
-    for t in tables:
-        if t.lower() == lowered:
-            return t
-    return None
-
-def choose_column(columns, choices):
-    lowered = {c.lower(): c for c in columns}
-    for ch in choices:
-        if ch.lower() in lowered:
-            return lowered[ch.lower()]
-    return None
-
-def quote_ident(v):
-    return '"' + v.replace('"', '""') + '"'
-
-def stringify(v):
-    if v is None:
-        return None
-    return str(v)
 
 try:
     session_id = stringify(payload.get("session_id"))
     if not session_id:
         fail("The session ID is required.")
 
-    hermes_home = pathlib.Path.home() / ".hermes"
+    home = pathlib.Path.home()
+    hermes_home = resolved_hermes_home()
     deleted_session_rows = 0
     deleted_message_rows = 0
     deleted_jsonl = False
 
-    # Try SQLite
-    for name in ["state.db", "state.sqlite", "state.sqlite3",
-                  "store.db", "store.sqlite", "store.sqlite3"]:
-        p = hermes_home / name
-        if not p.is_file():
-            continue
+    for candidate in iter_session_store_candidates(hermes_home, home):
         try:
-            conn = sqlite3.connect(str(p))
+            conn = sqlite3.connect(str(candidate))
             conn.execute("PRAGMA busy_timeout = 2000")
             tables = [r[0] for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
@@ -75,7 +41,6 @@ try:
         except Exception:
             continue
 
-    # Try JSONL
     sessions_dir = hermes_home / "sessions"
     if sessions_dir.exists():
         for f in sessions_dir.rglob("*.jsonl"):

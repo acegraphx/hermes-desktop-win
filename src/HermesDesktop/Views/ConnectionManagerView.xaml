@@ -99,8 +99,17 @@
                                     Style="{StaticResource DangerButton}"/>
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="Medium"
-                                       Foreground="{DynamicResource TextPrimary}"/>
+                            <DockPanel>
+                                <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="Medium"
+                                           Foreground="{DynamicResource TextPrimary}"/>
+                                <Border DockPanel.Dock="Right" HorizontalAlignment="Left" Margin="8,0,0,0"
+                                        Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3"
+                                        Padding="6,1"
+                                        Visibility="{Binding HermesProfile, Converter={StaticResource NullToVisibility}}">
+                                    <TextBlock Text="{Binding ResolvedHermesProfileName}" FontSize="10"
+                                               Foreground="{DynamicResource BadgeInfoForeground}"/>
+                                </Border>
+                            </DockPanel>
                             <TextBlock Text="{Binding DisplayTarget}" FontSize="12"
                                        Foreground="{DynamicResource TextTertiary}" Margin="0,2,0,0"/>
                         </StackPanel>
@@ -130,7 +139,13 @@
                 <TextBox Text="{Binding EditPort, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="13" Margin="0,0,0,12" Width="100" HorizontalAlignment="Left"/>
 
                 <TextBlock Text="SSH Key Path (optional)" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                <TextBox Text="{Binding EditKeyPath, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="13" Margin="0,0,0,16"/>
+                <TextBox Text="{Binding EditKeyPath, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="13" Margin="0,0,0,12"/>
+
+                <TextBlock Text="Hermes Profile (optional, blank = default)" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding EditHermesProfile, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="13" Margin="0,0,0,4"
+                         ToolTip="Name of Hermes profile under ~/.hermes/profiles/ on the remote host"/>
+                <TextBlock Text="Leave blank to use ~/.hermes (the default profile)." FontSize="11"
+                           Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,16"/>
 
                 <!-- Test result -->
                 <TextBlock Text="{Binding TestResult}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"

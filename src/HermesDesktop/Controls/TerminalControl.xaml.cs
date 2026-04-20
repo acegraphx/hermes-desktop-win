@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
+using HermesDesktop.Models;
 using Microsoft.Web.WebView2.Core;
 using Renci.SshNet;
 
@@ -202,6 +203,48 @@ public partial class TerminalControl : UserControl, IDisposable
         catch (Exception ex)
         {
             _logger?.LogDebug(ex, "Failed to send window change request");
+        }
+    }
+
+    public async Task ApplyThemeAsync(TerminalThemeAppearance appearance)
+    {
+        if (TerminalWebView.CoreWebView2 is null) return;
+        var p = appearance.AnsiPalette;
+        if (p.Length < 16) return;
+        var themeObj = new Dictionary<string, string>
+        {
+            ["background"] = appearance.Background.ToHex(),
+            ["foreground"] = appearance.Foreground.ToHex(),
+            ["cursor"] = appearance.Foreground.ToHex(),
+            ["cursorAccent"] = appearance.Background.ToHex(),
+            ["selectionBackground"] = p[4].ToHex(),
+            ["black"] = p[0].ToHex(),
+            ["red"] = p[1].ToHex(),
+            ["green"] = p[2].ToHex(),
+            ["yellow"] = p[3].ToHex(),
+            ["blue"] = p[4].ToHex(),
+            ["magenta"] = p[5].ToHex(),
+            ["cyan"] = p[6].ToHex(),
+            ["white"] = p[7].ToHex(),
+            ["brightBlack"] = p[8].ToHex(),
+            ["brightRed"] = p[9].ToHex(),
+            ["brightGreen"] = p[10].ToHex(),
+            ["brightYellow"] = p[11].ToHex(),
+            ["brightBlue"] = p[12].ToHex(),
+            ["brightMagenta"] = p[13].ToHex(),
+            ["brightCyan"] = p[14].ToHex(),
+            ["brightWhite"] = p[15].ToHex(),
+        };
+        var json = JsonSerializer.Serialize(themeObj);
+        var escaped = json.Replace("\\", "\\\\").Replace("'", "\\'");
+        try
+        {
+            await TerminalWebView.CoreWebView2.ExecuteScriptAsync(
+                $"terminalSetTheme('{escaped}')");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to apply terminal theme");
         }
     }
 

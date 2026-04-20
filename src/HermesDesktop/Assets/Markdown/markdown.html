@@ -32,6 +32,16 @@
     th { background: var(--code-bg); font-weight: 600; }
     strong { font-weight: 600; }
     em { font-style: italic; }
+
+    /* Match the thin WPF scrollbars (ControlStyles.xaml). */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(127, 127, 127, 0.4); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(127, 127, 127, 0.65); }
+    body.dark ::-webkit-scrollbar-thumb { background: #3A3D44; }
+    body.dark ::-webkit-scrollbar-thumb:hover { background: #5A5F68; }
+    body.light ::-webkit-scrollbar-thumb { background: #C1C1C1; }
+    body.light ::-webkit-scrollbar-thumb:hover { background: #A8A8A8; }
 </style>
 </head>
 <body class="light">

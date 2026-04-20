@@ -106,6 +106,17 @@
         terminal.clear();
     };
 
+    // === Theme: C# -> xterm.js ===
+    // Accepts an object matching xterm's ITheme. Partial updates supported.
+    window.terminalSetTheme = function (themeJson) {
+        try {
+            var theme = typeof themeJson === 'string' ? JSON.parse(themeJson) : themeJson;
+            terminal.options.theme = theme;
+        } catch (e) {
+            console.error('terminalSetTheme error:', e);
+        }
+    };
+
     // === Focus management ===
     window.terminalFocus = function () {
         terminal.focus();

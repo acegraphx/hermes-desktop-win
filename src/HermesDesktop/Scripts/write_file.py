@@ -1,13 +1,5 @@
 import hashlib
-import json
-import os
-import pathlib
-import sys
 import tempfile
-
-def fail(message):
-    print(json.dumps({"ok": False, "error": message}, ensure_ascii=False))
-    sys.exit(1)
 
 temp_name = None
 directory_fd = None

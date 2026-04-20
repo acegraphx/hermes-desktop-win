@@ -9,11 +9,15 @@ namespace HermesDesktop.ViewModels;
 public partial class OverviewViewModel : ObservableObject
 {
     private readonly IRemoteHermesService _hermesService;
+    private readonly IConnectionStore _connectionStore;
     private readonly MainViewModel _mainVm;
     private readonly ILogger<OverviewViewModel> _logger;
 
     [ObservableProperty]
     private HermesOverview? _overview;
+
+    public bool HasMultipleProfiles =>
+        Overview?.AvailableProfiles is { Count: > 1 };
 
     [ObservableProperty]
     private bool _isLoading;
@@ -23,14 +27,32 @@ public partial class OverviewViewModel : ObservableObject
 
     public OverviewViewModel(
         IRemoteHermesService hermesService,
+        IConnectionStore connectionStore,
         MainViewModel mainVm,
         ILogger<OverviewViewModel> logger)
     {
         _hermesService = hermesService;
+        _connectionStore = connectionStore;
         _mainVm = mainVm;
         _logger = logger;
 
         _ = LoadOverviewAsync();
+    }
+
+    partial void OnOverviewChanged(HermesOverview? value)
+    {
+        OnPropertyChanged(nameof(HasMultipleProfiles));
+    }
+
+    [RelayCommand]
+    private async Task SwitchProfileAsync(string? profileName)
+    {
+        if (_mainVm.ActiveConnection is null || profileName is null) return;
+        var updated = _mainVm.ActiveConnection.WithHermesProfile(profileName);
+        await _connectionStore.SaveConnectionAsync(updated);
+        _mainVm.RefreshConnections();
+        _mainVm.ActiveConnection = updated;
+        await LoadOverviewAsync();
     }
 
     [RelayCommand]

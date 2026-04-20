@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HermesDesktop.Controls;
+using HermesDesktop.Helpers;
 using HermesDesktop.Models;
 using HermesDesktop.Services;
 using Microsoft.Extensions.Logging;
@@ -12,6 +13,7 @@ public partial class TerminalViewModel : ObservableObject
 {
     private readonly ISshTransport _sshTransport;
     private readonly MainViewModel _mainVm;
+    private readonly IConnectionStore _connectionStore;
     private readonly ILogger<TerminalViewModel> _logger;
 
     [ObservableProperty]
@@ -23,14 +25,69 @@ public partial class TerminalViewModel : ObservableObject
     [ObservableProperty]
     private string? _errorMessage;
 
+    [ObservableProperty]
+    private TerminalThemeStyle _currentThemeStyle = TerminalThemeStyle.System;
+
+    public IReadOnlyList<TerminalThemeStyle> AvailableThemeStyles { get; } = new[]
+    {
+        TerminalThemeStyle.System,
+        TerminalThemeStyle.Graphite,
+        TerminalThemeStyle.Evergreen,
+        TerminalThemeStyle.Dusk,
+        TerminalThemeStyle.Paper
+    };
+
     public TerminalViewModel(
         ISshTransport sshTransport,
         MainViewModel mainVm,
+        IConnectionStore connectionStore,
         ILogger<TerminalViewModel> logger)
     {
         _sshTransport = sshTransport;
         _mainVm = mainVm;
+        _connectionStore = connectionStore;
         _logger = logger;
+
+        CurrentThemeStyle = _connectionStore.Preferences.TerminalTheme.Style;
+    }
+
+    public TerminalThemeAppearance ResolveCurrentAppearance() =>
+        new TerminalThemePreference { Style = CurrentThemeStyle }
+            .ResolvedAppearance(ThemeManager.IsSystemDarkMode());
+
+    partial void OnCurrentThemeStyleChanged(TerminalThemeStyle value)
+    {
+        _ = PersistAndApplyThemeAsync(value);
+    }
+
+    private async Task PersistAndApplyThemeAsync(TerminalThemeStyle style)
+    {
+        try
+        {
+            var prefs = _connectionStore.Preferences;
+            prefs.TerminalTheme = new TerminalThemePreference { Style = style };
+            await _connectionStore.SavePreferencesAsync(prefs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save terminal theme preference");
+        }
+
+        var appearance = ResolveCurrentAppearance();
+        foreach (var tab in Tabs)
+        {
+            if (tab.TerminalControl is { } ctrl)
+            {
+                _ = ctrl.ApplyThemeAsync(appearance);
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void SetTheme(TerminalThemeStyle? style)
+    {
+        if (style is null) return;
+        CurrentThemeStyle = style.Value;
     }
 
     partial void OnActiveTabChanged(TerminalTabViewModel? value)
@@ -54,8 +111,27 @@ public partial class TerminalViewModel : ObservableObject
             var session = await _sshTransport.OpenShellAsync(
                 _mainVm.ActiveConnection, 120, 40);
 
-            var tab = new TerminalTabViewModel(session,
-                _mainVm.ActiveConnection.Label ?? $"Terminal {Tabs.Count + 1}",
+            // Profile-aware: if a non-default Hermes profile is selected, bootstrap HERMES_HOME
+            if (!_mainVm.ActiveConnection.UsesDefaultHermesProfile)
+            {
+                try
+                {
+                    var bootstrap = _mainVm.ActiveConnection.RemoteShellBootstrapCommand + "\n";
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(bootstrap);
+                    await session.Stream.WriteAsync(bytes, 0, bytes.Length);
+                    await session.Stream.FlushAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to bootstrap Hermes profile in shell");
+                }
+            }
+
+            var title = !_mainVm.ActiveConnection.UsesDefaultHermesProfile
+                ? $"{_mainVm.ActiveConnection.Label} ({_mainVm.ActiveConnection.ResolvedHermesProfileName})"
+                : _mainVm.ActiveConnection.Label ?? $"Terminal {Tabs.Count + 1}";
+
+            var tab = new TerminalTabViewModel(session, title,
                 _mainVm.ActiveConnection,
                 _sshTransport);
             Tabs.Add(tab);

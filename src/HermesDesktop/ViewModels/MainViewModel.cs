@@ -48,6 +48,7 @@ public partial class MainViewModel : ObservableObject
         new() { Section = NavigationSection.Sessions, Label = "Sessions", IconGlyph = "\uE8BD", RequiresConnection = true },
         new() { Section = NavigationSection.Usage, Label = "Usage", IconGlyph = "\uE9D2", RequiresConnection = true },
         new() { Section = NavigationSection.Skills, Label = "Skills", IconGlyph = "\uE82D", RequiresConnection = true },
+        new() { Section = NavigationSection.CronJobs, Label = "Cron Jobs", IconGlyph = "\uE823", RequiresConnection = true },
         new() { Section = NavigationSection.Terminal, Label = "Terminal", IconGlyph = "\uE756", RequiresConnection = true },
     };
 
@@ -144,6 +145,7 @@ public partial class MainViewModel : ObservableObject
             NavigationSection.Sessions => _serviceProvider.GetRequiredService<SessionBrowserViewModel>(),
             NavigationSection.Usage => _serviceProvider.GetRequiredService<UsageBrowserViewModel>(),
             NavigationSection.Skills => _serviceProvider.GetRequiredService<SkillBrowserViewModel>(),
+            NavigationSection.CronJobs => _serviceProvider.GetRequiredService<CronJobsViewModel>(),
             NavigationSection.Terminal => _serviceProvider.GetRequiredService<TerminalViewModel>(),
             _ => null
         };

@@ -1,39 +1,4 @@
-import json
-import os
-import pathlib
 import sqlite3
-import sys
-
-def fail(message):
-    print(json.dumps({"ok": False, "error": message}, ensure_ascii=False))
-    sys.exit(1)
-
-def choose_table(tables, needle):
-    lowered = needle.lower()
-    for t in tables:
-        if t.lower() == lowered:
-            return t
-    for t in tables:
-        if lowered in t.lower():
-            return t
-    return None
-
-def choose_column(columns, choices):
-    lowered = {c.lower(): c for c in columns}
-    for ch in choices:
-        if ch.lower() in lowered:
-            return lowered[ch.lower()]
-    return None
-
-def quote_ident(v):
-    return '"' + v.replace('"', '""') + '"'
-
-def stringify(v):
-    if v is None:
-        return None
-    if isinstance(v, bytes):
-        return v.decode("utf-8", errors="replace")
-    return str(v)
 
 def sanitize_preview(text):
     if text is None:
@@ -55,29 +20,24 @@ def session_matches_query(item, query):
             return True
     return False
 
-def query_sqlite():
-    hermes_home = pathlib.Path.home() / ".hermes"
-    candidates = ["state.db", "state.sqlite", "state.sqlite3",
-                   "store.db", "store.sqlite", "store.sqlite3"]
-    for name in candidates:
-        p = hermes_home / name
-        if p.is_file():
-            try:
-                conn = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
-                conn.execute("PRAGMA busy_timeout = 2000")
-                tables = [r[0] for r in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
-                st = choose_table(tables, "sessions")
-                mt = choose_table(tables, "messages")
-                if st and mt:
-                    return conn, st, mt
-                conn.close()
-            except Exception:
-                continue
+def query_sqlite(hermes_home, home):
+    for candidate in iter_session_store_candidates(hermes_home, home):
+        try:
+            conn = sqlite3.connect(f"file:{candidate}?mode=ro", uri=True)
+            conn.execute("PRAGMA busy_timeout = 2000")
+            tables = [r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            st = choose_table(tables, "sessions")
+            mt = choose_table(tables, "messages")
+            if st and mt:
+                return conn, st, mt
+            conn.close()
+        except Exception:
+            continue
     return None, None, None
 
-def build_jsonl_items():
-    sessions_dir = pathlib.Path.home() / ".hermes" / "sessions"
+def build_jsonl_items(hermes_home):
+    sessions_dir = hermes_home / "sessions"
     if not sessions_dir.exists():
         return []
     items = []
@@ -101,12 +61,14 @@ def build_jsonl_items():
     return items
 
 try:
-    conn, session_table, message_table = query_sqlite()
+    home = pathlib.Path.home()
+    hermes_home = resolved_hermes_home()
+    conn, session_table, message_table = query_sqlite(hermes_home, home)
 
     if conn is None:
-        items = build_jsonl_items()
+        items = build_jsonl_items(hermes_home)
         if not items:
-            fail("No readable session store found under ~/.hermes.")
+            fail(f"No readable session store found under {tilde(hermes_home, home)}.")
     else:
         scols = [r[1] for r in conn.execute(f"PRAGMA table_info({quote_ident(session_table)})").fetchall()]
         mcols = [r[1] for r in conn.execute(f"PRAGMA table_info({quote_ident(message_table)})").fetchall()]
@@ -131,7 +93,6 @@ try:
             if not session_id:
                 continue
 
-            # Count + last active
             if msg_ts_col:
                 stats = conn.execute(
                     f"SELECT COUNT(*), MAX({quote_ident(msg_ts_col)}) "
@@ -146,7 +107,6 @@ try:
             message_count = int(stats[0]) if stats else 0
             last_active = stats[1] if stats and stats[1] else record.get(started_col)
 
-            # Preview
             preview = None
             if msg_content_col:
                 pq = f"SELECT {quote_ident(msg_content_col)} FROM {quote_ident(message_table)} WHERE {quote_ident(msg_sid_col)} = ?"
@@ -178,7 +138,6 @@ try:
         conn.close()
         items.sort(key=lambda x: x.get("last_active") or x.get("started_at") or 0, reverse=True)
 
-    # Filter by query
     query = payload.get("query")
     if query:
         query = query.strip().lower()

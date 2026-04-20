@@ -10,6 +10,9 @@ publish/
 ## VS Code
 .vscode/
 
+## Claude Code local state
+.claude/
+
 ## Visual Studio
 .vs/
 *.rsuser

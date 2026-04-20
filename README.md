@@ -14,12 +14,14 @@ Grab the latest `HermesDesktop.exe` from [**Releases**](https://github.com/acegr
 
 ## Features
 
-- **Terminal** &mdash; Embedded SSH terminal with tabs, powered by xterm.js in WebView2. Full color, resize, scrollback.
-- **Sessions** &mdash; Browse, search, and delete sessions from the remote `~/.hermes/state.db`. View full message transcripts.
+- **Terminal** &mdash; Embedded SSH terminal with tabs, powered by xterm.js in WebView2. Full color, resize, scrollback. **Customizable themes** (System, Graphite, Evergreen, Dusk, Paper) with live preview and persisted preference.
+- **Sessions** &mdash; Browse, search, and delete sessions from the remote session store. View full message transcripts.
 - **Files** &mdash; Edit `USER.md`, `MEMORY.md`, and `SOUL.md` with conflict detection. SHA-256 hash-based optimistic locking prevents blind overwrites.
-- **Usage** &mdash; Token usage dashboard with totals, per-model breakdown, cost estimates, and a bar chart of recent sessions.
+- **Usage** &mdash; Token usage dashboard with totals (input, output, cache-read, cache-write, reasoning), per-model breakdown, provider attribution, cost estimates, and a bar chart of recent sessions.
 - **Skills** &mdash; Recursive skill discovery from `~/.hermes/skills/`. YAML frontmatter parsing, tag display, and rendered markdown content.
-- **Overview** &mdash; Confirms remote home, Hermes root, tracked files, session source, and Python version.
+- **Cron Jobs** &mdash; Browse, create, edit, pause/resume, run-now, and delete remote Hermes cron jobs. Supports hourly, daily, weekday, weekly, monthly, every-N-interval, after-delay, at-datetime, and custom cron expressions. Read-only detail panel with full metadata (schedule, prompt, skills, next/last run, delivery target); switch to editor mode with a single click.
+- **Overview** &mdash; Confirms remote home, Hermes root, tracked files, session source, Python version, and active Hermes profile. Lists other available profiles on the host with a one-click Switch action.
+- **Hermes profile awareness** &mdash; Each connection can target a named Hermes profile under `~/.hermes/profiles/<name>` or the default `~/.hermes`. Every section (overview, sessions, usage, skills, files, cron, terminal) runs against the selected profile. Profile badge shown on the connection list.
 - **Connection Management** &mdash; Add, edit, test, and delete SSH profiles. Import hosts from `~/.ssh/config`.
 - **Dark Mode** &mdash; Automatically detects the Windows system theme.
 
@@ -155,7 +157,7 @@ hermes-desktop-win/
     ViewModels/                 MVVM ViewModels for each section
     Views/                      XAML views for each section
     Controls/                   TerminalControl, MarkdownControl, SimpleBarChart
-    Scripts/                    Embedded Python scripts (9 files)
+    Scripts/                    Embedded Python scripts (12 files)
     Assets/Terminal/            xterm.js, terminal-bridge.js, HTML host
     Assets/Markdown/            marked.js, markdown.html
     Resources/                  DarkTheme.xaml, LightTheme.xaml, Icons/
@@ -219,8 +221,8 @@ The app stores configuration in `%APPDATA%\HermesDesktop\`:
 
 | File | Contents |
 |------|----------|
-| `connections.json` | SSH connection profiles (label, host, user, port, key path) |
-| `preferences.json` | Last active connection ID |
+| `connections.json` | SSH connection profiles (label, host, user, port, key path, Hermes profile name) |
+| `preferences.json` | Last active connection ID, terminal theme preference |
 | `logs/hermes-YYYYMMDD.log` | Debug logs (7-day rolling retention) |
 
 All writes use atomic temp-file-then-rename to prevent corruption.

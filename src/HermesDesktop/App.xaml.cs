@@ -43,6 +43,7 @@ public partial class App : Application
                 services.AddSingleton<ISessionBrowserService, SessionBrowserService>();
                 services.AddSingleton<IUsageBrowserService, UsageBrowserService>();
                 services.AddSingleton<ISkillBrowserService, SkillBrowserService>();
+                services.AddSingleton<ICronBrowserService, CronBrowserService>();
                 services.AddSingleton<SshConfigParser>();
 
                 services.AddSingleton<MainViewModel>();
@@ -52,6 +53,7 @@ public partial class App : Application
                 services.AddTransient<SessionBrowserViewModel>();
                 services.AddTransient<UsageBrowserViewModel>();
                 services.AddTransient<SkillBrowserViewModel>();
+                services.AddTransient<CronJobsViewModel>();
                 services.AddTransient<TerminalViewModel>();
 
                 services.AddSingleton<MainWindow>();
