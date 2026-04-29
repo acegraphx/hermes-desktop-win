@@ -7,7 +7,11 @@ content_bytes = payload["content"].encode("utf-8")
 expected_hash = payload.get("expected_content_hash")
 
 try:
-    target = pathlib.Path(os.path.expanduser(payload["path"]))
+    raw_path = payload["path"]
+    if raw_path.startswith("~") or raw_path.startswith("/"):
+        target = pathlib.Path(os.path.expanduser(raw_path))
+    else:
+        target = resolved_hermes_home() / raw_path
     target.parent.mkdir(parents=True, exist_ok=True)
 
     if expected_hash is not None:

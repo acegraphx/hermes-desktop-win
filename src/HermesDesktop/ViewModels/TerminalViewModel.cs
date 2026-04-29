@@ -49,6 +49,23 @@ public partial class TerminalViewModel : ObservableObject
         _logger = logger;
 
         CurrentThemeStyle = _connectionStore.Preferences.TerminalTheme.Style;
+
+        // Singleton VM: when the active connection changes, all open SSH sessions
+        // belong to the previous connection and must be torn down.
+        _mainVm.PropertyChanged += OnMainVmPropertyChanged;
+    }
+
+    private void OnMainVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainViewModel.ActiveConnection)) return;
+
+        ActiveTab = null;
+        foreach (var tab in Tabs.ToList())
+        {
+            try { tab.Dispose(); } catch { }
+        }
+        Tabs.Clear();
+        ErrorMessage = null;
     }
 
     public TerminalThemeAppearance ResolveCurrentAppearance() =>

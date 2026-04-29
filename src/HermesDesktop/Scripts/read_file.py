@@ -1,7 +1,11 @@
 import hashlib
 
 try:
-    target = pathlib.Path(os.path.expanduser(payload["path"]))
+    raw_path = payload["path"]
+    if raw_path.startswith("~") or raw_path.startswith("/"):
+        target = pathlib.Path(os.path.expanduser(raw_path))
+    else:
+        target = resolved_hermes_home() / raw_path
     if not target.exists():
         fail(f"{payload['path']} does not exist on the active host.")
     if not target.is_file():

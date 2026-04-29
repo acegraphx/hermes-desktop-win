@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -19,13 +20,43 @@ public partial class TerminalView : UserControl
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        // Just track the VM here — actual subscription/unsubscription happens in
+        // Loaded/Unloaded so we don't end up double-subscribed across re-mount cycles.
+        _vm = DataContext as TerminalViewModel;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_vm == null) return;
+
+        _vm.PropertyChanged += OnVmPropertyChanged;
+
+        // The singleton VM may already have tabs whose TerminalControl instances were
+        // detached from a prior TerminalView's grid. Re-attach them to this grid.
+        foreach (var tab in _vm.Tabs)
+        {
+            if (tab.TerminalControl is { } control && !TerminalHostGrid.Children.Contains(control))
+                TerminalHostGrid.Children.Add(control);
+        }
+
+        SwitchToActiveTab();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        // Stop receiving ActiveTab change notifications — the singleton VM outlives
+        // this view, and our handler references this view's TerminalHostGrid.
         if (_vm != null)
             _vm.PropertyChanged -= OnVmPropertyChanged;
 
-        _vm = DataContext as TerminalViewModel;
-
-        if (_vm != null)
-            _vm.PropertyChanged += OnVmPropertyChanged;
+        // Detach (but don't dispose) terminal controls so the singleton VM can re-attach
+        // them to the next TerminalView instance. Leave EmptyState and any non-terminal
+        // children in place.
+        var toRemove = TerminalHostGrid.Children
+            .OfType<TerminalControl>()
+            .ToList();
+        foreach (var control in toRemove)
+            TerminalHostGrid.Children.Remove(control);
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)

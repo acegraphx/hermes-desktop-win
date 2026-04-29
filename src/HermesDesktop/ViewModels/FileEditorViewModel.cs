@@ -45,9 +45,9 @@ public partial class FileEditorViewModel : ObservableObject
 
     private static readonly Dictionary<string, string> FilePathMap = new()
     {
-        ["USER.md"] = "~/.hermes/memories/USER.md",
-        ["MEMORY.md"] = "~/.hermes/memories/MEMORY.md",
-        ["SOUL.md"] = "~/.hermes/SOUL.md",
+        ["USER.md"] = "memories/USER.md",
+        ["MEMORY.md"] = "memories/MEMORY.md",
+        ["SOUL.md"] = "SOUL.md",
     };
 
     public FileEditorViewModel(

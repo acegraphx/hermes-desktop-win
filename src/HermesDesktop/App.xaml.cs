@@ -54,7 +54,7 @@ public partial class App : Application
                 services.AddTransient<UsageBrowserViewModel>();
                 services.AddTransient<SkillBrowserViewModel>();
                 services.AddTransient<CronJobsViewModel>();
-                services.AddTransient<TerminalViewModel>();
+                services.AddSingleton<TerminalViewModel>();
 
                 services.AddSingleton<MainWindow>();
             })
