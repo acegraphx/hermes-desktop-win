@@ -9,4 +9,10 @@ public class AppPreferences
 
     [JsonPropertyName("terminalTheme")]
     public TerminalThemePreference TerminalTheme { get; set; } = new();
+
+    [JsonPropertyName("terminalFontFamily")]
+    public string? TerminalFontFamily { get; set; }
+
+    [JsonPropertyName("terminalFontSize")]
+    public int? TerminalFontSize { get; set; }
 }

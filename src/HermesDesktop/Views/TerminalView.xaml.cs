@@ -127,6 +127,12 @@ public partial class TerminalView : UserControl
                 await control.ApplyThemeAsync(_vm.ResolveCurrentAppearance());
             }
             catch { /* best-effort theme application */ }
+
+            try
+            {
+                await control.ApplyFontAsync(_vm.CurrentFontFamily, _vm.CurrentFontSize);
+            }
+            catch { /* best-effort font application */ }
         }
     }
 

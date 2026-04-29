@@ -206,6 +206,26 @@ public partial class TerminalControl : UserControl, IDisposable
         }
     }
 
+    public async Task ApplyFontAsync(string fontFamily, int fontSize)
+    {
+        if (TerminalWebView.CoreWebView2 is null) return;
+        if (string.IsNullOrWhiteSpace(fontFamily)) return;
+
+        // Build a CSS-style font stack with sane fallbacks so the terminal still
+        // renders even if the chosen face isn't available to WebView2 for some reason.
+        var stack = $"{fontFamily}, Cascadia Mono, Consolas, monospace";
+        var escaped = stack.Replace("\\", "\\\\").Replace("'", "\\'");
+        try
+        {
+            await TerminalWebView.CoreWebView2.ExecuteScriptAsync(
+                $"terminalSetFont('{escaped}', {fontSize})");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to apply terminal font");
+        }
+    }
+
     public async Task ApplyThemeAsync(TerminalThemeAppearance appearance)
     {
         if (TerminalWebView.CoreWebView2 is null) return;

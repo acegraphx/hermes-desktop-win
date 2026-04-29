@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using HermesDesktop.Controls;
@@ -28,6 +29,12 @@ public partial class TerminalViewModel : ObservableObject
     [ObservableProperty]
     private TerminalThemeStyle _currentThemeStyle = TerminalThemeStyle.System;
 
+    [ObservableProperty]
+    private string _currentFontFamily = MonospaceFonts.Default;
+
+    [ObservableProperty]
+    private int _currentFontSize = 14;
+
     public IReadOnlyList<TerminalThemeStyle> AvailableThemeStyles { get; } = new[]
     {
         TerminalThemeStyle.System,
@@ -35,6 +42,13 @@ public partial class TerminalViewModel : ObservableObject
         TerminalThemeStyle.Evergreen,
         TerminalThemeStyle.Dusk,
         TerminalThemeStyle.Paper
+    };
+
+    public IReadOnlyList<string> AvailableFontFamilies => MonospaceFonts.Installed;
+
+    public IReadOnlyList<int> AvailableFontSizes { get; } = new[]
+    {
+        10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24
     };
 
     public TerminalViewModel(
@@ -49,6 +63,22 @@ public partial class TerminalViewModel : ObservableObject
         _logger = logger;
 
         CurrentThemeStyle = _connectionStore.Preferences.TerminalTheme.Style;
+
+        var savedFont = _connectionStore.Preferences.TerminalFontFamily;
+        if (!string.IsNullOrWhiteSpace(savedFont) &&
+            AvailableFontFamilies.Contains(savedFont, StringComparer.OrdinalIgnoreCase))
+        {
+            CurrentFontFamily = savedFont;
+        }
+        else if (AvailableFontFamilies.Count > 0 &&
+                 !AvailableFontFamilies.Contains(MonospaceFonts.Default, StringComparer.OrdinalIgnoreCase))
+        {
+            CurrentFontFamily = AvailableFontFamilies[0];
+        }
+
+        var savedSize = _connectionStore.Preferences.TerminalFontSize;
+        if (savedSize is { } size && AvailableFontSizes.Contains(size))
+            CurrentFontSize = size;
 
         // Singleton VM: when the active connection changes, all open SSH sessions
         // belong to the previous connection and must be torn down.
@@ -77,6 +107,16 @@ public partial class TerminalViewModel : ObservableObject
         _ = PersistAndApplyThemeAsync(value);
     }
 
+    partial void OnCurrentFontFamilyChanged(string value)
+    {
+        _ = PersistAndApplyFontAsync();
+    }
+
+    partial void OnCurrentFontSizeChanged(int value)
+    {
+        _ = PersistAndApplyFontAsync();
+    }
+
     private async Task PersistAndApplyThemeAsync(TerminalThemeStyle style)
     {
         try
@@ -96,6 +136,29 @@ public partial class TerminalViewModel : ObservableObject
             if (tab.TerminalControl is { } ctrl)
             {
                 _ = ctrl.ApplyThemeAsync(appearance);
+            }
+        }
+    }
+
+    private async Task PersistAndApplyFontAsync()
+    {
+        try
+        {
+            var prefs = _connectionStore.Preferences;
+            prefs.TerminalFontFamily = CurrentFontFamily;
+            prefs.TerminalFontSize = CurrentFontSize;
+            await _connectionStore.SavePreferencesAsync(prefs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save terminal font preference");
+        }
+
+        foreach (var tab in Tabs)
+        {
+            if (tab.TerminalControl is { } ctrl)
+            {
+                _ = ctrl.ApplyFontAsync(CurrentFontFamily, CurrentFontSize);
             }
         }
     }

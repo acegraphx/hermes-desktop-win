@@ -117,6 +117,28 @@
         }
     };
 
+    // === Font: C# -> xterm.js ===
+    // After updating font options the cell geometry changes, so we re-fit and
+    // notify C# of the new (cols, rows) so the SSH PTY can be resized to match.
+    window.terminalSetFont = function (fontFamily, fontSize) {
+        try {
+            if (typeof fontFamily === 'string' && fontFamily.length > 0) {
+                terminal.options.fontFamily = fontFamily;
+            }
+            if (typeof fontSize === 'number' && fontSize > 0) {
+                terminal.options.fontSize = fontSize;
+            }
+            try { fitAddon.fit(); } catch (e) { /* ignore */ }
+            window.chrome.webview.postMessage({
+                type: 'resize',
+                cols: terminal.cols,
+                rows: terminal.rows
+            });
+        } catch (e) {
+            console.error('terminalSetFont error:', e);
+        }
+    };
+
     // === Focus management ===
     window.terminalFocus = function () {
         terminal.focus();
