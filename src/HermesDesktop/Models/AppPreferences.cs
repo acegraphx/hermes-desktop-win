@@ -18,4 +18,7 @@ public class AppPreferences
 
     [JsonPropertyName("lastWikiRelativePathByConnection")]
     public Dictionary<string, string> LastWikiRelativePathByConnection { get; set; } = new();
+
+    [JsonPropertyName("sidebarCollapsed")]
+    public bool SidebarCollapsed { get; set; }
 }

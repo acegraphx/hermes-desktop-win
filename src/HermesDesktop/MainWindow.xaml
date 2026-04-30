@@ -21,7 +21,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220" MinWidth="180" MaxWidth="350"/>
+            <ColumnDefinition Width="{Binding SidebarColumnWidth}"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
@@ -60,22 +60,83 @@
         <Border Grid.Row="1" Grid.Column="0" Background="{DynamicResource SidebarBackground}"
                 BorderThickness="0,0,1,0" BorderBrush="{DynamicResource SidebarBorder}">
             <DockPanel>
+                <!-- Top: full info when expanded, just hermes icon when collapsed -->
                 <Border DockPanel.Dock="Top" Padding="12,8" BorderThickness="0,0,0,1"
                         BorderBrush="{DynamicResource SidebarBorder}"
                         Visibility="{Binding ActiveConnection, Converter={StaticResource NullToVisibility}}">
-                    <StackPanel>
-                        <TextBlock Text="{Binding ActiveConnection.Label}" FontWeight="Medium" FontSize="12"
-                                   Foreground="{DynamicResource TextSecondary}"/>
-                        <TextBlock Text="{Binding ActiveConnection.DisplayTarget}" FontSize="11"
-                                   Foreground="{DynamicResource TextTertiary}" Margin="0,2,0,0"/>
-                    </StackPanel>
+                    <Grid>
+                        <StackPanel Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+                            <TextBlock Text="{Binding ActiveConnection.Label}" FontWeight="Medium" FontSize="12"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding ActiveConnection.DisplayTarget}" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}" Margin="0,2,0,0"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <Image Source="/Resources/Icons/hermes.ico" Width="22" Height="22"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               HorizontalAlignment="Center"
+                               Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource BoolToVisibility}}">
+                            <Image.ToolTip>
+                                <ToolTip>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding ActiveConnection.Label}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding ActiveConnection.DisplayTarget}" FontSize="11"
+                                                   Foreground="{DynamicResource TextTertiary}"/>
+                                        <TextBlock Text="{Binding ActiveConnection.RemoteHermesHomePath}" FontSize="10"
+                                                   FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
+                                                   Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </ToolTip>
+                            </Image.ToolTip>
+                        </Image>
+                    </Grid>
                 </Border>
 
-                <Border DockPanel.Dock="Bottom" Padding="12,6" BorderThickness="0,1,0,0"
+                <!-- Bottom: status + collapse toggle -->
+                <Border DockPanel.Dock="Bottom" Padding="6,6,6,6" BorderThickness="0,1,0,0"
                         BorderBrush="{DynamicResource SidebarBorder}">
-                    <TextBlock Text="{Binding StatusMessage}" FontSize="11"
-                               Foreground="{DynamicResource TextTertiary}"
-                               TextTrimming="CharacterEllipsis"/>
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right" Command="{Binding ToggleSidebarCommand}"
+                                Width="32" Height="26" Padding="0" BorderThickness="0"
+                                Background="Transparent">
+                            <Button.ToolTip>
+                                <ToolTip>
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Collapse sidebar"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
+                                                        <Setter Property="Text" Value="Expand sidebar"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </ToolTip>
+                            </Button.ToolTip>
+                            <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="&#xE76B;"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
+                                                <Setter Property="Text" Value="&#xE76C;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                        <TextBlock Text="{Binding StatusMessage}" FontSize="11" VerticalAlignment="Center"
+                                   Margin="6,0,0,0"
+                                   Foreground="{DynamicResource TextTertiary}"
+                                   TextTrimming="CharacterEllipsis"
+                                   Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}"/>
+                    </DockPanel>
                 </Border>
 
                 <ListBox ItemsSource="{Binding NavigationItems}"
@@ -84,12 +145,16 @@
                          BorderThickness="0" Background="Transparent" Padding="4,8">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Margin="8,5">
+                            <StackPanel Orientation="Horizontal" Margin="8,5"
+                                        ToolTip="{Binding Label}">
                                 <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets"
                                            FontSize="14" Foreground="{DynamicResource TextTertiary}"
                                            Margin="0,0,10,0" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding Label}" FontSize="13"
-                                           Foreground="{DynamicResource TextSecondary}"/>
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           Visibility="{Binding DataContext.IsSidebarCollapsed,
+                                                                RelativeSource={RelativeSource AncestorType=Window},
+                                                                Converter={StaticResource InverseBoolToVisibility}}"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -125,7 +190,8 @@
         </Border>
 
         <GridSplitter Grid.Row="1" Grid.Column="1" Width="3" HorizontalAlignment="Center"
-                      VerticalAlignment="Stretch" Background="{DynamicResource SplitterBrush}"/>
+                      VerticalAlignment="Stretch" Background="{DynamicResource SplitterBrush}"
+                      Visibility="{Binding IsSidebarCollapsed, Converter={StaticResource InverseBoolToVisibility}}"/>
 
         <!-- Content area -->
         <ContentControl Grid.Row="1" Grid.Column="2" Content="{Binding CurrentContentViewModel}" Margin="0"

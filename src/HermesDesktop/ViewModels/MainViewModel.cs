@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ISshTransport _sshTransport;
     private readonly ILogger<MainViewModel> _logger;
     private NavigationSection? _pendingSection;
+    private bool _suppressPrefsSave;
 
     [ObservableProperty]
     private ConnectionProfile? _activeConnection;
@@ -37,6 +38,12 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _showDiscardChangesDialog;
+
+    [ObservableProperty]
+    private bool _isSidebarCollapsed;
+
+    public GridLength SidebarColumnWidth =>
+        IsSidebarCollapsed ? new GridLength(56) : new GridLength(220);
 
     public ObservableCollection<ConnectionProfile> Connections { get; } = new();
 
@@ -86,6 +93,12 @@ public partial class MainViewModel : ObservableObject
         foreach (var conn in _connectionStore.Connections)
             Connections.Add(conn);
 
+        // Restore sidebar collapse state. Suppress the prefs round-trip that
+        // OnIsSidebarCollapsedChanged would otherwise trigger during load.
+        _suppressPrefsSave = true;
+        try { IsSidebarCollapsed = _connectionStore.Preferences.SidebarCollapsed; }
+        finally { _suppressPrefsSave = false; }
+
         if (_connectionStore.Preferences.LastConnectionId is { } lastId)
         {
             var last = Connections.FirstOrDefault(c => c.Id == lastId);
@@ -103,11 +116,25 @@ public partial class MainViewModel : ObservableObject
     {
         if (value != null)
         {
-            _ = _connectionStore.SavePreferencesAsync(new AppPreferences { LastConnectionId = value.Id });
+            var prefs = _connectionStore.Preferences;
+            prefs.LastConnectionId = value.Id;
+            _ = _connectionStore.SavePreferencesAsync(prefs);
         }
         UpdateWindowTitle();
         NavigateToSection(SelectedSection);
     }
+
+    partial void OnIsSidebarCollapsedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SidebarColumnWidth));
+        if (_suppressPrefsSave) return;
+        var prefs = _connectionStore.Preferences;
+        prefs.SidebarCollapsed = value;
+        _ = _connectionStore.SavePreferencesAsync(prefs);
+    }
+
+    [RelayCommand]
+    private void ToggleSidebar() => IsSidebarCollapsed = !IsSidebarCollapsed;
 
     private void RequestSectionNavigation(NavigationSection section)
     {
