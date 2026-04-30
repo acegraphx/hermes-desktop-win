@@ -42,8 +42,14 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSidebarCollapsed;
 
-    public GridLength SidebarColumnWidth =>
-        IsSidebarCollapsed ? new GridLength(56) : new GridLength(220);
+    [ObservableProperty]
+    private GridLength _sidebarColumnWidth = new(220);
+
+    private double _lastExpandedWidth = 220;
+
+    private const double CollapsedSidebarWidth = 64;
+    private const double DefaultExpandedSidebarWidth = 220;
+    private const double MinExpandedSidebarWidth = 180;
 
     public ObservableCollection<ConnectionProfile> Connections { get; } = new();
 
@@ -93,10 +99,18 @@ public partial class MainViewModel : ObservableObject
         foreach (var conn in _connectionStore.Connections)
             Connections.Add(conn);
 
-        // Restore sidebar collapse state. Suppress the prefs round-trip that
-        // OnIsSidebarCollapsedChanged would otherwise trigger during load.
+        // Restore sidebar state. Suppress the prefs round-trip that the partial
+        // change handlers would otherwise trigger during load.
         _suppressPrefsSave = true;
-        try { IsSidebarCollapsed = _connectionStore.Preferences.SidebarCollapsed; }
+        try
+        {
+            var savedWidth = _connectionStore.Preferences.SidebarExpandedWidth;
+            if (savedWidth >= MinExpandedSidebarWidth) _lastExpandedWidth = savedWidth;
+            IsSidebarCollapsed = _connectionStore.Preferences.SidebarCollapsed;
+            SidebarColumnWidth = IsSidebarCollapsed
+                ? new GridLength(CollapsedSidebarWidth)
+                : new GridLength(_lastExpandedWidth);
+        }
         finally { _suppressPrefsSave = false; }
 
         if (_connectionStore.Preferences.LastConnectionId is { } lastId)
@@ -126,10 +140,35 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnIsSidebarCollapsedChanged(bool value)
     {
-        OnPropertyChanged(nameof(SidebarColumnWidth));
+        if (value)
+        {
+            // Snapshot the current expanded width before we shrink, so the
+            // user's drag-resized width survives a collapse round-trip.
+            if (SidebarColumnWidth.IsAbsolute && SidebarColumnWidth.Value >= MinExpandedSidebarWidth)
+                _lastExpandedWidth = SidebarColumnWidth.Value;
+            SidebarColumnWidth = new GridLength(CollapsedSidebarWidth);
+        }
+        else
+        {
+            SidebarColumnWidth = new GridLength(_lastExpandedWidth > 0 ? _lastExpandedWidth : DefaultExpandedSidebarWidth);
+        }
+
         if (_suppressPrefsSave) return;
         var prefs = _connectionStore.Preferences;
         prefs.SidebarCollapsed = value;
+        _ = _connectionStore.SavePreferencesAsync(prefs);
+    }
+
+    partial void OnSidebarColumnWidthChanged(GridLength value)
+    {
+        if (_suppressPrefsSave) return;
+        if (IsSidebarCollapsed) return;          // don't persist the 56px collapsed snapshot
+        if (!value.IsAbsolute) return;           // ignore Star/Auto forms
+        if (value.Value < MinExpandedSidebarWidth) return;
+        if (Math.Abs(value.Value - _lastExpandedWidth) < 1) return;
+        _lastExpandedWidth = value.Value;
+        var prefs = _connectionStore.Preferences;
+        prefs.SidebarExpandedWidth = value.Value;
         _ = _connectionStore.SavePreferencesAsync(prefs);
     }
 

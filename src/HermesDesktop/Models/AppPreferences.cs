@@ -21,4 +21,7 @@ public class AppPreferences
 
     [JsonPropertyName("sidebarCollapsed")]
     public bool SidebarCollapsed { get; set; }
+
+    [JsonPropertyName("sidebarExpandedWidth")]
+    public double SidebarExpandedWidth { get; set; } = 220;
 }

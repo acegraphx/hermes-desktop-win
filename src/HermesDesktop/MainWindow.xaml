@@ -21,7 +21,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="{Binding SidebarColumnWidth}"/>
+            <ColumnDefinition Width="{Binding SidebarColumnWidth, Mode=TwoWay}" MinWidth="64" MaxWidth="380"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
@@ -142,7 +142,9 @@
                 <ListBox ItemsSource="{Binding NavigationItems}"
                          SelectedValue="{Binding SelectedSection}"
                          SelectedValuePath="Section"
-                         BorderThickness="0" Background="Transparent" Padding="4,8">
+                         BorderThickness="0" Background="Transparent" Padding="4,8"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" Margin="8,5"
