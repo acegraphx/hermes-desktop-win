@@ -27,11 +27,11 @@
 
     <Grid Margin="24">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="320" MinWidth="220"/>
+            <ColumnDefinition Width="280" MinWidth="180" MaxWidth="420"/>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*" MinWidth="280"/>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="240" MinWidth="180"/>
+            <ColumnDefinition Width="240" MinWidth="160" MaxWidth="320"/>
         </Grid.ColumnDefinitions>
 
         <!-- Left: file tree / list + filter + search -->
@@ -102,7 +102,9 @@
                 </DockPanel>
             </Border>
 
-            <TreeView ItemsSource="{Binding RootNodes}" BorderThickness="0">
+            <TreeView ItemsSource="{Binding RootNodes}" BorderThickness="0"
+                      Background="{DynamicResource PanelBackground}"
+                      Foreground="{DynamicResource TextPrimary}">
                 <TreeView.Style>
                     <Style TargetType="TreeView">
                         <Setter Property="Visibility" Value="Visible"/>
@@ -115,22 +117,26 @@
                 </TreeView.Style>
                 <TreeView.Resources>
                     <HierarchicalDataTemplate DataType="{x:Type models:WikiNode}" ItemsSource="{Binding Children}">
-                        <StackPanel Orientation="Horizontal" Margin="2,2">
-                            <TextBlock FontSize="13" Margin="0,0,4,0" Foreground="{DynamicResource TextSecondary}">
+                        <DockPanel LastChildFill="True" Margin="0,1">
+                            <TextBlock DockPanel.Dock="Left" FontSize="13" Margin="0,0,4,0"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Text" Value=""/>
+                                        <Setter Property="Text" Value="&#xE7C3;"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsDirectory}" Value="True">
-                                                <Setter Property="Text" Value=""/>
+                                                <Setter Property="Text" Value="&#xE8B7;"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
                             <TextBlock Text="{Binding Name}" FontSize="13"
-                                       Foreground="{DynamicResource TextPrimary}"/>
-                        </StackPanel>
+                                       Foreground="{DynamicResource TextPrimary}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
+                        </DockPanel>
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
                 <TreeView.ItemContainerStyle>
@@ -327,9 +333,7 @@
                                     BorderThickness="0"
                                     Command="{Binding DataContext.FilterByTagCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}">
-                                <TextBlock>
-                                    <Run Text="#"/><Run Text="{Binding}"/>
-                                </TextBlock>
+                                <TextBlock Text="{Binding Mode=OneWay, StringFormat='#{0}'}"/>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
