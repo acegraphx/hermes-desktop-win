@@ -35,6 +35,8 @@ public partial class App : Application
             .ConfigureServices((_, services) =>
             {
                 services.AddSingleton<SshConnectionPool>();
+                services.AddSingleton<SftpConnectionPool>();
+                services.AddSingleton<WikiAssetResolver>();
                 services.AddSingleton<ISshTransport, SshTransport>();
                 services.AddSingleton<IRemoteScriptExecutor, RemotePythonScriptExecutor>();
                 services.AddSingleton<IConnectionStore, ConnectionStore>();
@@ -44,6 +46,7 @@ public partial class App : Application
                 services.AddSingleton<IUsageBrowserService, UsageBrowserService>();
                 services.AddSingleton<ISkillBrowserService, SkillBrowserService>();
                 services.AddSingleton<ICronBrowserService, CronBrowserService>();
+                services.AddSingleton<IWikiService, WikiService>();
                 services.AddSingleton<SshConfigParser>();
 
                 services.AddSingleton<MainViewModel>();
@@ -54,6 +57,7 @@ public partial class App : Application
                 services.AddTransient<UsageBrowserViewModel>();
                 services.AddTransient<SkillBrowserViewModel>();
                 services.AddTransient<CronJobsViewModel>();
+                services.AddTransient<WikiBrowserViewModel>();
                 services.AddSingleton<TerminalViewModel>();
 
                 services.AddSingleton<MainWindow>();
@@ -106,6 +110,8 @@ public partial class App : Application
     {
         var pool = _host.Services.GetRequiredService<SshConnectionPool>();
         pool.Dispose();
+        var sftpPool = _host.Services.GetRequiredService<SftpConnectionPool>();
+        sftpPool.Dispose();
         await _host.StopAsync();
         Log.CloseAndFlush();
         base.OnExit(e);

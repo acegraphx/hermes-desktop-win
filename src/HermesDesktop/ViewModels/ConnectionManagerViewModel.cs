@@ -46,6 +46,9 @@ public partial class ConnectionManagerViewModel : ObservableObject
     [ObservableProperty]
     private string _editHermesProfile = string.Empty;
 
+    [ObservableProperty]
+    private string _editWikiPath = string.Empty;
+
     private Guid? _editingId;
 
     public ObservableCollection<ConnectionProfile> Connections => _mainVm.Connections;
@@ -80,6 +83,7 @@ public partial class ConnectionManagerViewModel : ObservableObject
         EditPort = 22;
         EditKeyPath = "";
         EditHermesProfile = "";
+        EditWikiPath = "";
         TestResult = null;
         IsEditing = true;
     }
@@ -94,6 +98,7 @@ public partial class ConnectionManagerViewModel : ObservableObject
         EditPort = profile.SshPort;
         EditKeyPath = profile.SshKeyPath ?? "";
         EditHermesProfile = profile.HermesProfile ?? "";
+        EditWikiPath = profile.WikiPath ?? "";
         TestResult = null;
         IsEditing = true;
     }
@@ -113,6 +118,7 @@ public partial class ConnectionManagerViewModel : ObservableObject
                             string.Equals(EditHermesProfile.Trim(), "default", StringComparison.OrdinalIgnoreCase)
                 ? null
                 : EditHermesProfile.Trim(),
+            WikiPath = string.IsNullOrWhiteSpace(EditWikiPath) ? null : EditWikiPath.Trim(),
         };
 
         if (!profile.IsValid) return;

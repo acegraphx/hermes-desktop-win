@@ -28,6 +28,9 @@ public class ConnectionProfile
     [JsonPropertyName("hermesProfile")]
     public string? HermesProfile { get; set; }
 
+    [JsonPropertyName("wikiPath")]
+    public string? WikiPath { get; set; }
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -99,6 +102,21 @@ public class ConnectionProfile
     public string RemoteCronJobsPath => $"{RemoteHermesHomePath}/cron/jobs.json";
 
     [JsonIgnore]
+    public string? TrimmedWikiPath
+    {
+        get
+        {
+            if (WikiPath is null) return null;
+            var v = WikiPath.Trim();
+            return string.IsNullOrEmpty(v) ? null : v;
+        }
+    }
+
+    [JsonIgnore]
+    public string RemoteWikiPath =>
+        TrimmedWikiPath ?? $"{RemoteHermesHomePath}/home/wiki";
+
+    [JsonIgnore]
     public string RemoteShellBootstrapCommand
     {
         get
@@ -165,6 +183,7 @@ public class ConnectionProfile
                             string.Equals(profileName, "default", StringComparison.OrdinalIgnoreCase)
                 ? null
                 : profileName.Trim(),
+            WikiPath = WikiPath,
             CreatedAt = CreatedAt,
             UpdatedAt = DateTime.UtcNow,
             LastConnectedAt = LastConnectedAt,

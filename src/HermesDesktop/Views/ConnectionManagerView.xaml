@@ -147,6 +147,12 @@
                 <TextBlock Text="Leave blank to use ~/.hermes (the default profile)." FontSize="11"
                            Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,16"/>
 
+                <TextBlock Text="Wiki Path (optional)" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding EditWikiPath, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="13" Margin="0,0,0,4"
+                         ToolTip="Remote folder containing markdown wiki files. Default: &lt;hermes home&gt;/home/wiki"/>
+                <TextBlock Text="Leave blank to use &lt;hermes home&gt;/home/wiki." FontSize="11"
+                           Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,16"/>
+
                 <!-- Test result -->
                 <TextBlock Text="{Binding TestResult}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,12"
                            Visibility="{Binding TestResult, Converter={StaticResource NullToVisibility}}"

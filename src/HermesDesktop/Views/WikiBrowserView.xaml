@@ -1,0 +1,395 @@
+<UserControl x:Class="HermesDesktop.Views.WikiBrowserView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:HermesDesktop.Controls"
+             xmlns:models="clr-namespace:HermesDesktop.Models">
+    <Grid>
+        <!-- Discard-changes confirmation overlay -->
+        <Border Background="{DynamicResource OverlayBackground}" Panel.ZIndex="100"
+                Visibility="{Binding ShowDiscardDialog, Converter={StaticResource BoolToVisibility}}">
+            <Border Background="{DynamicResource DialogBackground}" CornerRadius="8" Padding="24" MaxWidth="420"
+                    VerticalAlignment="Center" HorizontalAlignment="Center"
+                    BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="Discard unsaved changes?" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextPrimary}"/>
+                    <TextBlock FontSize="13" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,20"
+                               Text="The current page has unsaved edits. Navigating away will discard them."/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Command="{Binding CancelDiscardNavigationCommand}"
+                                Padding="16,6" Margin="0,0,8,0"/>
+                        <Button Content="Discard" Command="{Binding ConfirmDiscardAndNavigateCommand}"
+                                Padding="16,6" Style="{StaticResource DangerButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320" MinWidth="220"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="240" MinWidth="180"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: file tree / list + filter + search -->
+        <DockPanel Grid.Column="0">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <TextBlock Text="Wiki" FontSize="22" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <Button DockPanel.Dock="Right" Content="Reload" HorizontalAlignment="Right"
+                        Command="{Binding LoadEntriesCommand}" Padding="10,3" FontSize="12"/>
+            </DockPanel>
+
+            <TextBlock DockPanel.Dock="Top" FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                       Margin="0,0,0,8" TextTrimming="CharacterEllipsis">
+                <Run Text="{Binding WikiRoot, Mode=OneWay, TargetNullValue='(no active connection)'}" FontFamily="Consolas"/>
+            </TextBlock>
+
+            <TextBox DockPanel.Dock="Top" Text="{Binding FilterQuery, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                     Padding="8,6" FontSize="13" Margin="0,0,0,6"
+                     ToolTip="Filter file names / tags (client-side)"/>
+
+            <TextBox DockPanel.Dock="Top" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+                     Padding="8,6" FontSize="13" Margin="0,0,0,6"
+                     ToolTip="Full-text search (remote grep)"/>
+
+            <TextBlock DockPanel.Dock="Top" Text="Loading..." Foreground="{DynamicResource TextTertiary}"
+                       Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+
+            <TextBlock DockPanel.Dock="Top" Text="{Binding ErrorMessage}" Foreground="{DynamicResource ErrorText}"
+                       FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}"/>
+
+            <Border DockPanel.Dock="Bottom" BorderThickness="1" BorderBrush="{DynamicResource PanelBorder}"
+                    CornerRadius="6" Margin="0,8,0,0" MaxHeight="280"
+                    Visibility="{Binding IsSearchActive, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="8,6,8,4">
+                        <TextBlock Text="Search results" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecondary}"/>
+                        <TextBlock DockPanel.Dock="Right" HorizontalAlignment="Right" FontSize="11"
+                                   Foreground="{DynamicResource TextTertiary}"
+                                   Text="{Binding SearchResults.Count, StringFormat='{}{0} hits'}"/>
+                    </DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Searching..." FontSize="11" Margin="8,0,8,4"
+                               Foreground="{DynamicResource TextTertiary}"
+                               Visibility="{Binding IsSearching, Converter={StaticResource BoolToVisibility}}"/>
+                    <ListView ItemsSource="{Binding SearchResults}" BorderThickness="0">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <EventSetter Event="MouseDoubleClick" Handler="OnSearchHitDoubleClick"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="2,2">
+                                    <TextBlock FontSize="11" FontFamily="Consolas"
+                                               Foreground="{DynamicResource TextSecondary}">
+                                        <Run Text="{Binding RelativePath}" FontWeight="SemiBold"/>
+                                        <Run Text=":"/>
+                                        <Run Text="{Binding LineNo}"/>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Snippet}" FontSize="11"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="280"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </DockPanel>
+            </Border>
+
+            <TreeView ItemsSource="{Binding RootNodes}" BorderThickness="0">
+                <TreeView.Style>
+                    <Style TargetType="TreeView">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFilterActive}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TreeView.Style>
+                <TreeView.Resources>
+                    <HierarchicalDataTemplate DataType="{x:Type models:WikiNode}" ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal" Margin="2,2">
+                            <TextBlock FontSize="13" Margin="0,0,4,0" Foreground="{DynamicResource TextSecondary}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value=""/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                                                <Setter Property="Text" Value=""/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="{Binding Name}" FontSize="13"
+                                       Foreground="{DynamicResource TextPrimary}"/>
+                        </StackPanel>
+                    </HierarchicalDataTemplate>
+                </TreeView.Resources>
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                        <EventSetter Event="Selected" Handler="OnTreeNodeSelected"/>
+                    </Style>
+                </TreeView.ItemContainerStyle>
+            </TreeView>
+
+            <ListView ItemsSource="{Binding FilteredEntries}" SelectedItem="{Binding SelectedEntry}"
+                      BorderThickness="0">
+                <ListView.Style>
+                    <Style TargetType="ListView">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFilterActive}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.Style>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="4,4">
+                            <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium"
+                                       Foreground="{DynamicResource TextPrimary}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding RelativePath}" FontSize="10" FontFamily="Consolas"
+                                       Foreground="{DynamicResource TextTertiary}"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch" Background="{DynamicResource SplitterBrush}" Margin="8,0"/>
+
+        <!-- Middle: preview -->
+        <DockPanel Grid.Column="2">
+            <TextBlock DockPanel.Dock="Top" Text="Select a wiki page to preview"
+                       FontSize="14" Foreground="{DynamicResource TextTertiary}"
+                       VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,80,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedEntry}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <DockPanel Visibility="{Binding SelectedEntry, Converter={StaticResource NullToVisibility}}">
+                <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedEntry.DisplayName}"
+                           FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedEntry.RelativePath}"
+                           FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
+                           Margin="0,0,0,8"/>
+
+                <!-- Mode toolbar -->
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Edit" Command="{Binding SetEditModeCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"/>
+                        <Button Content="Split" Command="{Binding SetSplitModeCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"/>
+                        <Button Content="Preview" Command="{Binding SetPreviewModeCommand}" Padding="10,4" FontSize="12"/>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <TextBlock VerticalAlignment="Center" Margin="0,0,12,0" FontSize="11" Foreground="{DynamicResource TextTertiary}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value=""/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                            <Setter Property="Text" Value="• Modified"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsSaving}" Value="True">
+                                            <Setter Property="Text" Value="Saving..."/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Button Content="Reload" Command="{Binding ReloadCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"/>
+                        <Button Content="Discard" Command="{Binding DiscardChangesCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"
+                                Style="{StaticResource DangerButton}" IsEnabled="{Binding IsDirty}"/>
+                        <Button Content="Save" Command="{Binding SaveCommand}" Padding="10,4" FontSize="12"
+                                Style="{StaticResource AccentButton}" IsEnabled="{Binding IsDirty}"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10,6" CornerRadius="6"
+                        Background="{DynamicResource WarningBackground}" BorderBrush="{DynamicResource WarningBorder}"
+                        BorderThickness="1"
+                        Visibility="{Binding ConflictMessage, Converter={StaticResource NullToVisibility}}">
+                    <TextBlock Text="{Binding ConflictMessage}" Foreground="{DynamicResource WarningText}"
+                               FontSize="12" TextWrapping="Wrap"/>
+                </Border>
+
+                <TextBlock DockPanel.Dock="Top" Text="Loading..." Foreground="{DynamicResource TextTertiary}"
+                           FontSize="12" Margin="0,0,0,8"
+                           Visibility="{Binding IsLoadingDocument, Converter={StaticResource BoolToVisibility}}"/>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="{Binding EditorRowHeight}" MinHeight="0"/>
+                        <RowDefinition Height="{Binding SplitterRowHeight}"/>
+                        <RowDefinition Height="{Binding PreviewRowHeight}" MinHeight="0"/>
+                    </Grid.RowDefinitions>
+
+                    <controls:WikiEditorControl Grid.Row="0" x:Name="Editor"
+                                                EditorContent="{Binding EditorContent, Mode=TwoWay}"
+                                                WikilinkClicked="OnWikilinkClicked"
+                                                SaveRequested="OnEditorSaveRequested"
+                                                Visibility="{Binding IsEditorVisible, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                  Background="{DynamicResource SplitterBrush}"
+                                  Visibility="{Binding IsEditorVisible, Converter={StaticResource BoolToVisibility}}">
+                        <GridSplitter.Style>
+                            <Style TargetType="GridSplitter">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ViewMode}" Value="Split">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </GridSplitter.Style>
+                    </GridSplitter>
+
+                    <controls:WikiPreviewControl Grid.Row="2" x:Name="Preview"
+                                                 MarkdownText="{Binding PreviewMarkdown}"
+                                                 CurrentDir="{Binding CurrentDir}"
+                                                 Profile="{Binding ActiveConnection}"
+                                                 AssetResolver="{Binding AssetResolver}"
+                                                 WikilinkClicked="OnWikilinkClicked"
+                                                 Visibility="{Binding IsPreviewVisible, Converter={StaticResource BoolToVisibility}}"/>
+                </Grid>
+            </DockPanel>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch" Background="{DynamicResource SplitterBrush}" Margin="8,0"/>
+
+        <!-- Right: metadata panel -->
+        <DockPanel Grid.Column="4"
+                   Visibility="{Binding SelectedEntry, Converter={StaticResource NullToVisibility}}">
+            <TextBlock DockPanel.Dock="Top" Text="Metadata" FontSize="14" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/>
+
+            <!-- Frontmatter table -->
+            <Border DockPanel.Dock="Top" Background="{DynamicResource CardBackground}" CornerRadius="6"
+                    Padding="10,8" BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1"
+                    Margin="0,0,0,8"
+                    Visibility="{Binding FrontmatterPairs.Count, Converter={StaticResource BoolToVisibility}}">
+                <ItemsControl ItemsSource="{Binding FrontmatterPairs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel Margin="0,2">
+                                <TextBlock Text="{Binding Key}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextTertiary}" Margin="0,0,8,0" MinWidth="60"/>
+                                <TextBlock Text="{Binding Value}" FontSize="11"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           TextWrapping="Wrap"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+
+            <!-- Tag chips -->
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8"
+                        Visibility="{Binding CurrentTags.Count, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Tags" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,4"/>
+                <ItemsControl ItemsSource="{Binding CurrentTags}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Margin="0,0,4,4" Padding="8,2" FontSize="11"
+                                    Background="{DynamicResource BadgeInfoBackground}"
+                                    Foreground="{DynamicResource BadgeInfoForeground}"
+                                    BorderThickness="0"
+                                    Command="{Binding DataContext.FilterByTagCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}">
+                                <TextBlock>
+                                    <Run Text="#"/><Run Text="{Binding}"/>
+                                </TextBlock>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- Backlinks (lazy) -->
+            <Border DockPanel.Dock="Top" BorderThickness="1" BorderBrush="{DynamicResource PanelBorder}"
+                    CornerRadius="6" Padding="10,8" Margin="0,0,0,8"
+                    Background="{DynamicResource CardBackground}">
+                <Expander IsExpanded="{Binding BacklinksExpanded, Mode=TwoWay}">
+                    <Expander.Header>
+                        <DockPanel LastChildFill="False">
+                            <TextBlock Text="Backlinks" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextTertiary}"/>
+                            <TextBlock DockPanel.Dock="Right" FontSize="11" Margin="6,0,0,0"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       Text="{Binding Backlinks.Count, StringFormat='({0})'}"
+                                       Visibility="{Binding BacklinksLoaded, Converter={StaticResource BoolToVisibility}}"/>
+                        </DockPanel>
+                    </Expander.Header>
+                    <StackPanel Margin="0,6,0,0">
+                        <TextBlock Text="Loading..." FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                                   Visibility="{Binding IsLoadingBacklinks, Converter={StaticResource BoolToVisibility}}"/>
+                        <TextBlock Text="No backlinks." FontSize="11" Foreground="{DynamicResource TextMuted}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding BacklinksLoaded}" Value="True"/>
+                                                <Condition Binding="{Binding Backlinks.Count}" Value="0"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ItemsControl ItemsSource="{Binding Backlinks}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding}" Margin="0,1" Padding="6,2" FontSize="11"
+                                            HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+                                            FontFamily="Consolas"
+                                            Background="Transparent" BorderThickness="0"
+                                            Foreground="{DynamicResource TextSecondary}"
+                                            Command="{Binding DataContext.OpenBacklinkCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Expander>
+            </Border>
+
+            <!-- Spacer -->
+            <Grid/>
+        </DockPanel>
+    </Grid>
+    </Grid>
+</UserControl>

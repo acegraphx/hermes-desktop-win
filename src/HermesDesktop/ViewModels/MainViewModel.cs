@@ -49,11 +49,21 @@ public partial class MainViewModel : ObservableObject
         new() { Section = NavigationSection.Usage, Label = "Usage", IconGlyph = "\uE9D2", RequiresConnection = true },
         new() { Section = NavigationSection.Skills, Label = "Skills", IconGlyph = "\uE82D", RequiresConnection = true },
         new() { Section = NavigationSection.CronJobs, Label = "Cron Jobs", IconGlyph = "\uE823", RequiresConnection = true },
+        new() { Section = NavigationSection.Wiki, Label = "Wiki", IconGlyph = "\uE8F1", RequiresConnection = true },
         new() { Section = NavigationSection.Terminal, Label = "Terminal", IconGlyph = "\uE756", RequiresConnection = true },
     };
 
-    /// <summary>Check if the file editor has unsaved changes.</summary>
-    public bool IsDirty => CurrentContentViewModel is FileEditorViewModel fe && fe.IsDirty;
+    /// <summary>Check whether any editing surface has unsaved changes.</summary>
+    public bool IsDirty =>
+        (CurrentContentViewModel is FileEditorViewModel fe && fe.IsDirty) ||
+        (CurrentContentViewModel is WikiBrowserViewModel wv && wv.IsDirty);
+
+    private NavigationSection? CurrentEditableSection => CurrentContentViewModel switch
+    {
+        FileEditorViewModel => NavigationSection.Files,
+        WikiBrowserViewModel => NavigationSection.Wiki,
+        _ => null,
+    };
 
     public MainViewModel(
         IServiceProvider serviceProvider,
@@ -101,8 +111,8 @@ public partial class MainViewModel : ObservableObject
 
     private void RequestSectionNavigation(NavigationSection section)
     {
-        // Guard: check for unsaved file editor changes
-        if (IsDirty && section != NavigationSection.Files)
+        // Guard: don't lose unsaved edits when leaving the current editable section.
+        if (IsDirty && section != CurrentEditableSection)
         {
             _pendingSection = section;
             ShowDiscardChangesDialog = true;
@@ -118,6 +128,8 @@ public partial class MainViewModel : ObservableObject
         ShowDiscardChangesDialog = false;
         if (CurrentContentViewModel is FileEditorViewModel fe)
             fe.DiscardChangesCommand.Execute(null);
+        else if (CurrentContentViewModel is WikiBrowserViewModel wv)
+            wv.DiscardChangesCommand.Execute(null);
 
         if (_pendingSection.HasValue)
         {
@@ -146,6 +158,7 @@ public partial class MainViewModel : ObservableObject
             NavigationSection.Usage => _serviceProvider.GetRequiredService<UsageBrowserViewModel>(),
             NavigationSection.Skills => _serviceProvider.GetRequiredService<SkillBrowserViewModel>(),
             NavigationSection.CronJobs => _serviceProvider.GetRequiredService<CronJobsViewModel>(),
+            NavigationSection.Wiki => _serviceProvider.GetRequiredService<WikiBrowserViewModel>(),
             NavigationSection.Terminal => _serviceProvider.GetRequiredService<TerminalViewModel>(),
             _ => null
         };

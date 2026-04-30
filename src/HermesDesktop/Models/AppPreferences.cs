@@ -15,4 +15,7 @@ public class AppPreferences
 
     [JsonPropertyName("terminalFontSize")]
     public int? TerminalFontSize { get; set; }
+
+    [JsonPropertyName("lastWikiRelativePathByConnection")]
+    public Dictionary<string, string> LastWikiRelativePathByConnection { get; set; } = new();
 }

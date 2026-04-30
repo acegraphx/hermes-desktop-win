@@ -9,6 +9,7 @@ public enum NavigationSection
     Usage,
     Skills,
     CronJobs,
+    Wiki,
     Terminal
 }
 

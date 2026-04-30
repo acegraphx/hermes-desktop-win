@@ -7,6 +7,9 @@ publish/
 *.userosscache
 *.sln.docstates
 
+## Node (CodeMirror bundler under tools/)
+node_modules/
+
 ## VS Code
 .vscode/
 

@@ -103,7 +103,7 @@ public class SshConnectionPool : IDisposable
         return new SshClient(connectionInfo);
     }
 
-    private List<AuthenticationMethod> BuildAuthMethods(ConnectionProfile profile)
+    public List<AuthenticationMethod> BuildAuthMethods(ConnectionProfile profile)
     {
         var methods = new List<AuthenticationMethod>();
 

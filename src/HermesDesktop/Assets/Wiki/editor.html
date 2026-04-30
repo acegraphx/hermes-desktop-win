@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    body { background: #FAFAFA; }
+    body.dark { background: #282c34; }
+    #editor { height: 100%; width: 100%; }
+    .cm-editor { height: 100%; }
+</style>
+</head>
+<body class="light">
+<div id="editor"></div>
+<script src="codemirror.bundle.js"></script>
+<script>
+    // The bundle (IIFE) attached editorInit/editorSetContent/etc. to window.
+    // Wait until DOM is ready.
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage({ type: 'bridge-ready' });
+        }
+    });
+</script>
+</body>
+</html>
