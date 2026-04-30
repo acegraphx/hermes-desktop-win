@@ -152,6 +152,7 @@ public class WikiService : IWikiService
         [JsonPropertyName("tags")] public List<string>? Tags { get; set; }
         [JsonPropertyName("outgoing_links")] public List<string>? OutgoingLinks { get; set; }
 
+        [JsonIgnore]
         public Dictionary<string, object?>? Frontmatter
         {
             get

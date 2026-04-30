@@ -378,6 +378,81 @@
         </Setter>
     </Style>
 
+    <!-- ==================== TREEVIEW ==================== -->
+    <Style TargetType="TreeView">
+        <Setter Property="Background" Value="{DynamicResource PanelBackground}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="Padding" Value="2"/>
+    </Style>
+
+    <Style TargetType="TreeViewItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="Padding" Value="4,2"/>
+    </Style>
+
+    <!-- ==================== EXPANDER ==================== -->
+    <!-- Lightweight theme-aware Expander: keeps the system layout (chevron + content slot)
+         but recolors the toggle so the icon stays visible on dark surfaces. -->
+    <Style x:Key="ExpanderToggleStyle" TargetType="ToggleButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="Transparent">
+                        <DockPanel LastChildFill="True">
+                            <TextBlock x:Name="Chevron" DockPanel.Dock="Left"
+                                       Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="9"
+                                       Foreground="{DynamicResource TextTertiary}"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Chevron" Property="Text" Value="&#xE70D;"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Chevron" Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Expander">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <DockPanel>
+                        <ToggleButton DockPanel.Dock="Top"
+                                      Style="{StaticResource ExpanderToggleStyle}"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                      Content="{TemplateBinding Header}"
+                                      ContentTemplate="{TemplateBinding HeaderTemplate}"/>
+                        <ContentPresenter x:Name="PART_Content"
+                                          Visibility="Collapsed"
+                                          Margin="14,4,0,0"/>
+                    </DockPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="PART_Content" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ==================== SCROLLBAR ==================== -->
     <!-- Thin overlay-style scrollbars: 6px at rest, PageUp/PageDown repeat buttons
          are hidden so the track remains a transparent gutter and the thumb reads
