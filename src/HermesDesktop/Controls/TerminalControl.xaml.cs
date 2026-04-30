@@ -17,6 +17,10 @@ public partial class TerminalControl : UserControl, IDisposable
     private SshClient? _sshClient;
     private CancellationTokenSource? _readCts;
     private bool _isInitialized;
+    private bool _isReady;
+    private string? _pendingFontFamily;
+    private int? _pendingFontSize;
+    private TerminalThemeAppearance? _pendingTheme;
     private readonly ILogger? _logger;
 
     public TerminalControl()
@@ -173,7 +177,19 @@ public partial class TerminalControl : UserControl, IDisposable
                     break;
 
                 case "ready":
-                    // Terminal is initialized, focus it
+                    // Terminal is initialized — bridge functions exist on window now.
+                    _isReady = true;
+                    if (_pendingTheme is { } theme)
+                    {
+                        _pendingTheme = null;
+                        await ApplyThemeAsync(theme);
+                    }
+                    if (_pendingFontFamily is { } font && _pendingFontSize is { } size)
+                    {
+                        _pendingFontFamily = null;
+                        _pendingFontSize = null;
+                        await ApplyFontAsync(font, size);
+                    }
                     await TerminalWebView.CoreWebView2.ExecuteScriptAsync("terminalFocus()");
                     break;
             }
@@ -206,10 +222,27 @@ public partial class TerminalControl : UserControl, IDisposable
         }
     }
 
+    public void QueueInitialAppearance(string fontFamily, int fontSize, TerminalThemeAppearance theme)
+    {
+        // Stash the desired font + theme so the "ready" handshake can apply them
+        // once terminal-bridge.js has installed window.terminalSetFont/Theme. This
+        // avoids a race where ApplyFontAsync would no-op because CoreWebView2 was
+        // still initializing.
+        _pendingFontFamily = fontFamily;
+        _pendingFontSize = fontSize;
+        _pendingTheme = theme;
+    }
+
     public async Task ApplyFontAsync(string fontFamily, int fontSize)
     {
-        if (TerminalWebView.CoreWebView2 is null) return;
         if (string.IsNullOrWhiteSpace(fontFamily)) return;
+
+        if (!_isReady || TerminalWebView.CoreWebView2 is null)
+        {
+            _pendingFontFamily = fontFamily;
+            _pendingFontSize = fontSize;
+            return;
+        }
 
         // Build a CSS-style font stack with sane fallbacks so the terminal still
         // renders even if the chosen face isn't available to WebView2 for some reason.
@@ -228,7 +261,11 @@ public partial class TerminalControl : UserControl, IDisposable
 
     public async Task ApplyThemeAsync(TerminalThemeAppearance appearance)
     {
-        if (TerminalWebView.CoreWebView2 is null) return;
+        if (!_isReady || TerminalWebView.CoreWebView2 is null)
+        {
+            _pendingTheme = appearance;
+            return;
+        }
         var p = appearance.AnsiPalette;
         if (p.Length < 16) return;
         var themeObj = new Dictionary<string, string>

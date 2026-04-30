@@ -71,20 +71,41 @@
     });
 
     // === Resize: xterm.js -> C# ===
+    // Guarded against:
+    // 1. Window minimize — WebView2 host collapses to ~0px and the observer fires.
+    //    fitAddon.fit() against a 0x0 box yields 1x1 dims; forwarding that to the
+    //    SSH PTY reflows the remote shell buffer to garbage. So we skip when the
+    //    container has no area.
+    // 2. Redundant emits — only post a resize message when (cols, rows) actually
+    //    changed since the last emit, so font changes / no-op layout passes don't
+    //    trigger spurious PTY resize requests.
     var resizeTimer = null;
-    var resizeObserver = new ResizeObserver(function () {
-        // Debounce resize events
-        if (resizeTimer) clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            fitAddon.fit();
+    var lastEmittedCols = terminal.cols;
+    var lastEmittedRows = terminal.rows;
+    var terminalEl = document.getElementById('terminal');
+
+    function emitResizeIfChanged() {
+        if (terminal.cols !== lastEmittedCols || terminal.rows !== lastEmittedRows) {
+            lastEmittedCols = terminal.cols;
+            lastEmittedRows = terminal.rows;
             window.chrome.webview.postMessage({
                 type: 'resize',
                 cols: terminal.cols,
                 rows: terminal.rows
             });
+        }
+    }
+
+    var resizeObserver = new ResizeObserver(function () {
+        // Debounce resize events
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            if (terminalEl.clientWidth <= 0 || terminalEl.clientHeight <= 0) return;
+            try { fitAddon.fit(); } catch (e) { return; }
+            emitResizeIfChanged();
         }, 100);
     });
-    resizeObserver.observe(document.getElementById('terminal'));
+    resizeObserver.observe(terminalEl);
 
     // === Output: C# -> xterm.js ===
     // Called from C# via ExecuteScriptAsync
@@ -128,12 +149,10 @@
             if (typeof fontSize === 'number' && fontSize > 0) {
                 terminal.options.fontSize = fontSize;
             }
-            try { fitAddon.fit(); } catch (e) { /* ignore */ }
-            window.chrome.webview.postMessage({
-                type: 'resize',
-                cols: terminal.cols,
-                rows: terminal.rows
-            });
+            if (terminalEl.clientWidth > 0 && terminalEl.clientHeight > 0) {
+                try { fitAddon.fit(); } catch (e) { /* ignore */ }
+            }
+            emitResizeIfChanged();
         } catch (e) {
             console.error('terminalSetFont error:', e);
         }

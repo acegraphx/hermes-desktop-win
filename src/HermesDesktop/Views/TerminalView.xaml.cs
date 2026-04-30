@@ -91,13 +91,19 @@ public partial class TerminalView : UserControl
             var control = new TerminalControl();
             activeTab.TerminalControl = control;
 
+            // Stash font + theme on the control so the WebView2 'ready' handshake
+            // applies them deterministically (no fixed timer race).
+            control.QueueInitialAppearance(
+                _vm.CurrentFontFamily,
+                _vm.CurrentFontSize,
+                _vm.ResolveCurrentAppearance());
+
             TerminalHostGrid.Children.Add(control);
 
-            // Attach the SSH session after the control is loaded
+            // Attach the SSH session as soon as the control is loaded.
             control.Loaded += (_, _) =>
             {
-                // Small delay to let WebView2 initialize, then attach session
-                _ = AttachSessionDelayedAsync(control, activeTab);
+                control.AttachSession(activeTab.Session.Stream, activeTab.Session.Client);
             };
         }
 
@@ -112,28 +118,6 @@ public partial class TerminalView : UserControl
         // ContextIdle fires after layout/render — more reliable than an arbitrary delay
         Dispatcher.InvokeAsync(() => control.Focus(),
             System.Windows.Threading.DispatcherPriority.ContextIdle);
-    }
-
-    private async Task AttachSessionDelayedAsync(TerminalControl control, TerminalTabViewModel tab)
-    {
-        // Wait a moment for WebView2 to finish initializing
-        await Task.Delay(500);
-        control.AttachSession(tab.Session.Stream, tab.Session.Client);
-
-        if (_vm is not null)
-        {
-            try
-            {
-                await control.ApplyThemeAsync(_vm.ResolveCurrentAppearance());
-            }
-            catch { /* best-effort theme application */ }
-
-            try
-            {
-                await control.ApplyFontAsync(_vm.CurrentFontFamily, _vm.CurrentFontSize);
-            }
-            catch { /* best-effort font application */ }
-        }
     }
 
     private void TerminalHostGrid_MouseDown(object sender, MouseButtonEventArgs e)
