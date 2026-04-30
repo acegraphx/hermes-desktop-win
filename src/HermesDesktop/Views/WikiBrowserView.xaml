@@ -48,13 +48,25 @@
                 <Run Text="{Binding WikiRoot, Mode=OneWay, TargetNullValue='(no active connection)'}" FontFamily="Consolas"/>
             </TextBlock>
 
-            <TextBox DockPanel.Dock="Top" Text="{Binding FilterQuery, UpdateSourceTrigger=PropertyChanged, Delay=200}"
-                     Padding="8,6" FontSize="13" Margin="0,0,0,6"
-                     ToolTip="Filter file names / tags (client-side)"/>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                <TextBox Text="{Binding FilterQuery, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                         Padding="8,6" FontSize="13"
+                         ToolTip="Filter file names / tags (client-side)"/>
+                <TextBlock IsHitTestVisible="False" Margin="14,0,0,0" FontSize="13"
+                           Foreground="{DynamicResource TextTertiary}"
+                           VerticalAlignment="Center" Text="Filter names / tags…"
+                           Visibility="{Binding FilterQuery, Converter={StaticResource InverseBoolToVisibility}}"/>
+            </Grid>
 
-            <TextBox DockPanel.Dock="Top" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, Delay=300}"
-                     Padding="8,6" FontSize="13" Margin="0,0,0,6"
-                     ToolTip="Full-text search (remote grep)"/>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
+                <TextBox Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+                         Padding="8,6" FontSize="13"
+                         ToolTip="Full-text search (remote grep)"/>
+                <TextBlock IsHitTestVisible="False" Margin="14,0,0,0" FontSize="13"
+                           Foreground="{DynamicResource TextTertiary}"
+                           VerticalAlignment="Center" Text="Full-text search…"
+                           Visibility="{Binding SearchQuery, Converter={StaticResource InverseBoolToVisibility}}"/>
+            </Grid>
 
             <TextBlock DockPanel.Dock="Top" Text="Loading..." Foreground="{DynamicResource TextTertiary}"
                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
@@ -88,9 +100,9 @@
                                 <StackPanel Margin="2,2">
                                     <TextBlock FontSize="11" FontFamily="Consolas"
                                                Foreground="{DynamicResource TextSecondary}">
-                                        <Run Text="{Binding RelativePath}" FontWeight="SemiBold"/>
+                                        <Run Text="{Binding RelativePath, Mode=OneWay}" FontWeight="SemiBold"/>
                                         <Run Text=":"/>
-                                        <Run Text="{Binding LineNo}"/>
+                                        <Run Text="{Binding LineNo, Mode=OneWay}"/>
                                     </TextBlock>
                                     <TextBlock Text="{Binding Snippet}" FontSize="11"
                                                Foreground="{DynamicResource TextMuted}"
@@ -203,34 +215,83 @@
                            Margin="0,0,0,8"/>
 
                 <!-- Mode toolbar -->
-                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="Edit" Command="{Binding SetEditModeCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"/>
-                        <Button Content="Split" Command="{Binding SetSplitModeCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"/>
-                        <Button Content="Preview" Command="{Binding SetPreviewModeCommand}" Padding="10,4" FontSize="12"/>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                        <Button Content="Edit" Command="{Binding SetEditModeCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"
+                                ToolTip="Source only">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewMode}" Value="Edit">
+                                            <Setter Property="Background" Value="{DynamicResource AccentBackground}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentForeground}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBackground}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Split" Command="{Binding SetSplitModeCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"
+                                ToolTip="Source + preview">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewMode}" Value="Split">
+                                            <Setter Property="Background" Value="{DynamicResource AccentBackground}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentForeground}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBackground}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="Preview" Command="{Binding SetPreviewModeCommand}" Padding="10,4" FontSize="12"
+                                ToolTip="Preview only">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewMode}" Value="Preview">
+                                            <Setter Property="Background" Value="{DynamicResource AccentBackground}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentForeground}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBackground}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <TextBlock VerticalAlignment="Center" Margin="0,0,12,0" FontSize="11" Foreground="{DynamicResource TextTertiary}">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" FontSize="11"
+                                   Foreground="{DynamicResource TextTertiary}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Text" Value=""/>
+                                    <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsDirty}" Value="True">
                                             <Setter Property="Text" Value="• Modified"/>
                                             <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                            <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsSaving}" Value="True">
                                             <Setter Property="Text" Value="Saving..."/>
+                                            <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <Button Content="Reload" Command="{Binding ReloadCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"/>
+                        <Button Command="{Binding ReloadCommand}" Padding="6,4" FontSize="12" Margin="0,0,4,0"
+                                ToolTip="Reload from remote">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12"/>
+                        </Button>
                         <Button Content="Discard" Command="{Binding DiscardChangesCommand}" Padding="10,4" FontSize="12" Margin="0,0,4,0"
-                                Style="{StaticResource DangerButton}" IsEnabled="{Binding IsDirty}"/>
+                                Style="{StaticResource DangerButton}"
+                                ToolTip="Throw away unsaved edits"
+                                Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}"/>
                         <Button Content="Save" Command="{Binding SaveCommand}" Padding="10,4" FontSize="12"
-                                Style="{StaticResource AccentButton}" IsEnabled="{Binding IsDirty}"/>
+                                Style="{StaticResource AccentButton}"
+                                ToolTip="Ctrl+S"
+                                Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}"/>
                     </StackPanel>
                 </DockPanel>
 

@@ -73,6 +73,12 @@ public class WikiNode
     public bool IsExpanded { get; set; } = true;
     public List<WikiNode> Children { get; } = new();
     public WikiEntry? Entry { get; init; }
+
+    // UIAutomation reads ToString() for the item's accessible name when no
+    // AutomationProperties.Name is set. Default object.ToString() returned
+    // the type name, which made trees impossible to navigate with screen
+    // readers and broke our test harness's leaf detection.
+    public override string ToString() => Name;
 }
 
 public class WikiSearchResult
