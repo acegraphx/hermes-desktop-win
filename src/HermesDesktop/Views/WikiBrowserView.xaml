@@ -129,7 +129,8 @@
                 </TreeView.Style>
                 <TreeView.Resources>
                     <HierarchicalDataTemplate DataType="{x:Type models:WikiNode}" ItemsSource="{Binding Children}">
-                        <DockPanel LastChildFill="True" Margin="0,1">
+                        <DockPanel LastChildFill="True" Margin="0,1"
+                                   ToolTip="{Binding Path}">
                             <TextBlock DockPanel.Dock="Left" FontSize="13" Margin="0,0,4,0"
                                        Foreground="{DynamicResource TextSecondary}"
                                        FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center">
@@ -173,7 +174,7 @@
                 </ListView.Style>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Margin="4,4">
+                        <StackPanel Margin="4,4" ToolTip="{Binding RelativePath}">
                             <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="Medium"
                                        Foreground="{DynamicResource TextPrimary}"
                                        TextTrimming="CharacterEllipsis"/>
@@ -208,10 +209,15 @@
 
             <DockPanel Visibility="{Binding SelectedEntry, Converter={StaticResource NullToVisibility}}">
                 <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedEntry.DisplayName}"
-                           FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4"
+                           ToolTip="{Binding SelectedEntry.DisplayName}"
+                           FontSize="16" FontWeight="SemiBold" Margin="0,0,0,2"
+                           TextTrimming="CharacterEllipsis"
                            Foreground="{DynamicResource TextPrimary}"/>
                 <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedEntry.RelativePath}"
-                           FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
+                           ToolTip="{Binding SelectedEntry.RelativePath}"
+                           FontSize="11" FontFamily="Consolas"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource TextTertiary}"
                            Margin="0,0,0,8"/>
 
                 <!-- Mode toolbar -->
