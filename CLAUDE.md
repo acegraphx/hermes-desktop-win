@@ -35,6 +35,8 @@ A native Windows WPF port of [hermes-desktop](https://github.com/dodo-reach/herm
 
 **Terminal:** `TerminalControl` hosts WebView2 running xterm.js. Bidirectional data bridge: SSH.NET `ShellStream` bytes are base64-encoded and passed to JS via `ExecuteScriptAsync("terminalWrite('...')")`. User input goes back via `window.chrome.webview.postMessage()` → C# `WebMessageReceived` → `ShellStream.WriteAsync()`. Resize uses reflection to call `SendWindowChangeRequest` on the SSH channel (SSH.NET 2025 moved this method off `ShellStream`). Theme is applied via `terminalSetTheme(jsonTheme)` on the JS bridge; presets live in `Models/TerminalTheme.cs` (System, Graphite, Evergreen, Dusk, Paper) and the selected style is persisted to `preferences.json`. When a tab opens for a non-default Hermes profile, the VM writes `export HERMES_HOME=...; exec $SHELL -l` into the shell stream so the terminal is scoped to that profile.
 
+**Terminal fonts:** Three sources unified through `Helpers/FontRegistry.cs` → `FontEntry` records: System (monospace fonts on the OS, filtered by glyph-advance equality of `i`/`M`/`W`), Bundled (5 TTFs in `Assets/Fonts/` shipped with the app), Downloaded (TTFs the user installed at runtime under `%APPDATA%\HermesDesktop\fonts\`). Catalog of downloadable fonts lives in `Resources/font-catalog.json` (embedded resource); `Helpers/FontCatalog.cs` streams downloads to `<id>.ttf.partial`, SHA-256-verifies against the manifest, then atomic-renames into place. `FontRegistry.Invalidate()` clears the cache and fires `Changed`; `FontManagerViewModel` (the "Manage Fonts" dialog from the ⚙ button next to the terminal font dropdown) and `TerminalViewModel` both subscribe. WebView2 gets two virtual host mappings (`hermes.fonts.bundled` → install dir, `hermes.fonts.user` → `%APPDATA%`) set up in `TerminalControl.OnLoaded` after `EnsureCoreWebView2Async`. On the JS side, `terminalInstallFontFaces(css)` injects `<style id="hermes-fontfaces">` with `@font-face` rules pointing at those virtual hosts; the bridge runs in the `case "ready":` handshake before `ApplyFontAsync` so xterm.js can resolve the user's selected family. `font-display: block` and a `document.fonts.ready` re-fit ensure cell geometry uses the real glyphs.
+
 **Theming:** `ThemeManager` reads `HKCU\...\Personalize\AppsUseLightTheme` at startup and loads `DarkTheme.xaml` or `LightTheme.xaml`. MainWindow uses `DynamicResource` bindings for all theme-aware colors.
 
 ## Key Patterns
@@ -46,13 +48,24 @@ A native Windows WPF port of [hermes-desktop](https://github.com/dodo-reach/herm
 - `SshConfigParser` reads `~/.ssh/config` for the "Import SSH Config" feature in connection management.
 - `ConnectionProfile.RemoteHermesHomePath` derives `~/.hermes` or `~/.hermes/profiles/<name>` from the optional `HermesProfile` field. Do not hardcode paths in services or XAML.
 - Scrollbars (WPF and `::-webkit-scrollbar` in `markdown.html`) are intentionally thin (6px) with hidden repeat buttons — see `Resources/ControlStyles.xaml`.
+- Downloaded font `FontEntry.WpfFamily` is a Consolas fallback, NOT a disk-backed `FontFamily(Uri, "./#Family")`. Binding a freshly-written .ttf to a TextBlock measure crashed the process when Defender briefly locked the file: `TryGetFontTable` threw `FileNotFoundException` out of `MeasureOverride`, bypassing normal binding-error handling. The terminal renders downloaded fonts via xterm.js + `@font-face` (using the WebView2 virtual hosts), so WPF preview rendering for them is intentionally skipped. Bundled fonts are stable and keep their disk-backed `WpfFamily` for proper preview.
+- `App.OnStartup` wires `DispatcherUnhandledException`, `AppDomain.UnhandledException`, and `TaskScheduler.UnobservedTaskException` as a last-resort safety net — exceptions log to Serilog and don't kill the process. Don't rely on this to mask bugs; fix root causes when they appear in the log.
+- Custom WPF window chrome: any new `Window` should match `MainWindow`'s pattern — `WindowChrome` with `CaptionHeight="32"`, custom 32px title-bar row with hermes icon + title + `CaptionButtonStyle`/`CloseButtonStyle` buttons, and a `StateChanged` handler that toggles maximize/restore glyph and applies a 7px `RootGrid.Margin` when maximized to compensate for WPF's maximized-window oversizing. `Views/FontManagerWindow.xaml(.cs)` is the reference for non-MainWindow dialogs.
 
 ## Local Storage
 
 - `%APPDATA%\HermesDesktop\connections.json` — connection profiles (includes `hermesProfile` per entry)
-- `%APPDATA%\HermesDesktop\preferences.json` — last connection ID, terminal theme preference
+- `%APPDATA%\HermesDesktop\preferences.json` — last connection ID, terminal theme preference, terminal font family + size
+- `%APPDATA%\HermesDesktop\fonts\<id>.ttf` — runtime-downloaded catalog fonts; `.partial` files are mid-download artifacts that are cleaned up on failure
 - `%APPDATA%\HermesDesktop\logs\hermes-*.log` — Serilog rolling daily, 7-day retention
 
 ## Vendored Assets
 
-`Assets/Terminal/` contains xterm.js 5.5.0 + addons + `terminal-bridge.js`. `Assets/Markdown/` contains marked.js 15.0.7 + `markdown.html`. Both are copied to output via `<Content>` items in the csproj.
+`Assets/Terminal/` contains xterm.js 5.5.0 + addons + `terminal-bridge.js`. `Assets/Markdown/` contains marked.js 15.0.7 + `markdown.html`. `Assets/Fonts/` contains 5 bundled programming TTFs (Cascadia Code, Fira Code, Hack, IBM Plex Mono, JetBrains Mono) + `LICENSES.md` with attribution per OFL/MIT. All three folders are copied to output via `<Content>` items in the csproj.
+
+**csproj gotchas for `Assets/Fonts/`** — both must be present or bundled fonts won't survive a `PublishSingleFile` build:
+
+- `<Content>` items carry `<ExcludeFromSingleFile>true</ExcludeFromSingleFile>` so the TTFs stay on disk next to the exe (the WebView2 virtual host mapping needs physical files; otherwise the bundler embeds them into the single-file exe and they disappear from `publish/Assets/Fonts/`).
+- `<Resource Remove="Assets\Fonts\**\*.ttf" />` overrides WPF's implicit `<Resource>` discovery for `.ttf` (which would embed them into the assembly and prevent disk copy entirely).
+
+The font catalog manifest is `<EmbeddedResource Include="Resources\font-catalog.json" />`. `FontCatalog` reads it via `Assembly.GetManifestResourceStream` at startup.
