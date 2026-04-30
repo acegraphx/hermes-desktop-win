@@ -16,13 +16,19 @@
                           SelectedItem="{Binding CurrentFontSize}" Width="60" Margin="0,0,8,0"
                           VerticalContentAlignment="Center" FontSize="11"
                           ToolTip="Terminal font size"/>
+                <Button DockPanel.Dock="Right" Content="&#x2699;" FontSize="14"
+                        Foreground="{DynamicResource TextPrimary}" Background="Transparent" BorderThickness="0"
+                        Padding="6,2" Margin="0,0,8,0" Cursor="Hand"
+                        Command="{Binding OpenFontManagerCommand}"
+                        ToolTip="Manage fonts..."/>
                 <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding AvailableFontFamilies}"
-                          SelectedItem="{Binding CurrentFontFamily}" Width="180" Margin="0,0,8,0"
+                          SelectedValue="{Binding CurrentFontFamily}" SelectedValuePath="Family"
+                          Width="200" Margin="0,0,8,0"
                           VerticalContentAlignment="Center" FontSize="11"
                           ToolTip="Terminal font">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding}" FontFamily="{Binding}"/>
+                            <TextBlock Text="{Binding DisplayName}" FontFamily="{Binding WpfFamily}"/>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>

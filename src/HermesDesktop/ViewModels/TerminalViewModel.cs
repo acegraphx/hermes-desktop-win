@@ -30,10 +30,13 @@ public partial class TerminalViewModel : ObservableObject
     private TerminalThemeStyle _currentThemeStyle = TerminalThemeStyle.System;
 
     [ObservableProperty]
-    private string _currentFontFamily = MonospaceFonts.Default;
+    private string _currentFontFamily = FontRegistry.DefaultFamily;
 
     [ObservableProperty]
     private int _currentFontSize = 14;
+
+    [ObservableProperty]
+    private IReadOnlyList<FontEntry> _availableFontFamilies = FontRegistry.GetAvailable();
 
     public IReadOnlyList<TerminalThemeStyle> AvailableThemeStyles { get; } = new[]
     {
@@ -43,8 +46,6 @@ public partial class TerminalViewModel : ObservableObject
         TerminalThemeStyle.Dusk,
         TerminalThemeStyle.Paper
     };
-
-    public IReadOnlyList<string> AvailableFontFamilies => MonospaceFonts.Installed;
 
     public IReadOnlyList<int> AvailableFontSizes { get; } = new[]
     {
@@ -65,24 +66,46 @@ public partial class TerminalViewModel : ObservableObject
         CurrentThemeStyle = _connectionStore.Preferences.TerminalTheme.Style;
 
         var savedFont = _connectionStore.Preferences.TerminalFontFamily;
-        if (!string.IsNullOrWhiteSpace(savedFont) &&
-            AvailableFontFamilies.Contains(savedFont, StringComparer.OrdinalIgnoreCase))
+        var resolved = FontRegistry.Resolve(savedFont) ?? FontRegistry.Resolve(FontRegistry.DefaultFamily);
+        if (resolved is not null)
         {
-            CurrentFontFamily = savedFont;
+            CurrentFontFamily = resolved.Family;
         }
-        else if (AvailableFontFamilies.Count > 0 &&
-                 !AvailableFontFamilies.Contains(MonospaceFonts.Default, StringComparer.OrdinalIgnoreCase))
+        else if (AvailableFontFamilies.Count > 0)
         {
-            CurrentFontFamily = AvailableFontFamilies[0];
+            CurrentFontFamily = AvailableFontFamilies[0].Family;
         }
 
         var savedSize = _connectionStore.Preferences.TerminalFontSize;
         if (savedSize is { } size && AvailableFontSizes.Contains(size))
             CurrentFontSize = size;
 
+        FontRegistry.Changed += OnFontRegistryChanged;
+
         // Singleton VM: when the active connection changes, all open SSH sessions
         // belong to the previous connection and must be torn down.
         _mainVm.PropertyChanged += OnMainVmPropertyChanged;
+    }
+
+    private void OnFontRegistryChanged(object? sender, EventArgs e)
+    {
+        AvailableFontFamilies = FontRegistry.GetAvailable();
+
+        // If the active selection got removed, fall back to default.
+        if (FontRegistry.Resolve(CurrentFontFamily) is null)
+        {
+            CurrentFontFamily = FontRegistry.DefaultFamily;
+        }
+
+        // Re-inject @font-face into every open terminal so a newly-installed font
+        // becomes immediately renderable and an uninstalled one stops resolving.
+        foreach (var tab in Tabs)
+        {
+            if (tab.TerminalControl is { } ctrl)
+            {
+                _ = ctrl.InstallFontFacesAsync();
+            }
+        }
     }
 
     private void OnMainVmPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -168,6 +191,16 @@ public partial class TerminalViewModel : ObservableObject
     {
         if (style is null) return;
         CurrentThemeStyle = style.Value;
+    }
+
+    [RelayCommand]
+    private void OpenFontManager()
+    {
+        var window = new Views.FontManagerWindow
+        {
+            Owner = System.Windows.Application.Current.MainWindow
+        };
+        window.ShowDialog();
     }
 
     partial void OnActiveTabChanged(TerminalTabViewModel? value)

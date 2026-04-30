@@ -158,6 +158,34 @@
         }
     };
 
+    // === Font faces: C# -> xterm.js ===
+    // Installs/replaces a <style id="hermes-fontfaces"> block carrying @font-face
+    // rules for bundled + downloaded fonts. After fonts finish loading we re-fit
+    // so xterm.js measures cell geometry against the real glyphs (not fallbacks).
+    window.terminalInstallFontFaces = function (cssText) {
+        try {
+            var styleId = 'hermes-fontfaces';
+            var existing = document.getElementById(styleId);
+            if (existing) existing.remove();
+            if (cssText && cssText.length > 0) {
+                var style = document.createElement('style');
+                style.id = styleId;
+                style.textContent = cssText;
+                document.head.appendChild(style);
+            }
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function () {
+                    if (terminalEl.clientWidth > 0 && terminalEl.clientHeight > 0) {
+                        try { fitAddon.fit(); } catch (e) { /* ignore */ }
+                    }
+                    emitResizeIfChanged();
+                });
+            }
+        } catch (e) {
+            console.error('terminalInstallFontFaces error:', e);
+        }
+    };
+
     // === Focus management ===
     window.terminalFocus = function () {
         terminal.focus();

@@ -63,6 +63,25 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // Last-resort safety net for exceptions that escape WPF measure/arrange
+        // (e.g. a font file vanishing mid-Measure when antivirus scans it).
+        // Logging + Handled = true keeps the process alive instead of crashing.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            Log.Error(args.Exception, "Unhandled dispatcher exception");
+            args.Handled = true;
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception ex)
+                Log.Error(ex, "Unhandled AppDomain exception (terminating={Term})", args.IsTerminating);
+        };
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            Log.Error(args.Exception, "Unobserved task exception");
+            args.SetObserved();
+        };
+
         ThemeManager.ApplySystemTheme();
 
         if (!await WebView2Bootstrapper.EnsureInstalledAsync())

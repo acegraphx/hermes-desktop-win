@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\Icons\hermes.ico</ApplicationIcon>
-    <Version>1.4.1</Version>
-    <AssemblyVersion>1.4.1.0</AssemblyVersion>
-    <FileVersion>1.4.1.0</FileVersion>
+    <Version>1.5.3</Version>
+    <AssemblyVersion>1.5.3.0</AssemblyVersion>
+    <FileVersion>1.5.3.0</FileVersion>
     <Product>Hermes Desktop for Windows</Product>
     <AssemblyTitle>Hermes Desktop</AssemblyTitle>
   </PropertyGroup>
@@ -32,6 +32,22 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <Content Include="Assets\Fonts\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <!-- PublishSingleFile bundles Content into the exe by default; the TTFs
+           must stay on disk so WebView2 can serve them via the font virtual host. -->
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <!-- WPF implicitly discovers *.ttf as embedded <Resource>, which prevents the
+         file from being copied to disk. Drop those implicit items so the <Content>
+         entries above win. -->
+    <Resource Remove="Assets\Fonts\**\*.ttf" />
+    <Page Remove="Assets\Fonts\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\font-catalog.json" />
   </ItemGroup>
 
   <ItemGroup>

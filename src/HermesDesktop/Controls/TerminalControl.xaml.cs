@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
+using HermesDesktop.Helpers;
 using HermesDesktop.Models;
 using Microsoft.Web.WebView2.Core;
 using Renci.SshNet;
@@ -61,6 +62,31 @@ public partial class TerminalControl : UserControl, IDisposable
                     "hermes.terminal",
                     assetsPath,
                     CoreWebView2HostResourceAccessKind.Allow);
+            }
+
+            // Map bundled + user font folders so @font-face URLs resolve. Bundled
+            // ships with the app; user holds runtime-downloaded TTFs from the
+            // catalog. Folder must exist before mapping or the mapping silently fails.
+            try
+            {
+                var bundledFonts = FontRegistry.BundledFontsFolder;
+                if (Directory.Exists(bundledFonts))
+                {
+                    TerminalWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                        FontRegistry.BundledVirtualHost,
+                        bundledFonts,
+                        CoreWebView2HostResourceAccessKind.Allow);
+                }
+                var userFonts = FontRegistry.UserFontsFolder;
+                Directory.CreateDirectory(userFonts);
+                TerminalWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                    FontRegistry.UserVirtualHost,
+                    userFonts,
+                    CoreWebView2HostResourceAccessKind.Allow);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to map font virtual hosts");
             }
 
             // Handle messages from xterm.js
@@ -179,6 +205,7 @@ public partial class TerminalControl : UserControl, IDisposable
                 case "ready":
                     // Terminal is initialized — bridge functions exist on window now.
                     _isReady = true;
+                    await InstallFontFacesAsync();
                     if (_pendingTheme is { } theme)
                     {
                         _pendingTheme = null;
@@ -231,6 +258,23 @@ public partial class TerminalControl : UserControl, IDisposable
         _pendingFontFamily = fontFamily;
         _pendingFontSize = fontSize;
         _pendingTheme = theme;
+    }
+
+    public async Task InstallFontFacesAsync()
+    {
+        if (!_isReady || TerminalWebView.CoreWebView2 is null) return;
+        try
+        {
+            var css = FontRegistry.CssFontFaceBlock();
+            // JSON-serialize so quotes/backslashes inside the CSS are valid as a JS literal.
+            var jsLiteral = JsonSerializer.Serialize(css);
+            await TerminalWebView.CoreWebView2.ExecuteScriptAsync(
+                $"terminalInstallFontFaces({jsLiteral})");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to install font faces");
+        }
     }
 
     public async Task ApplyFontAsync(string fontFamily, int fontSize)

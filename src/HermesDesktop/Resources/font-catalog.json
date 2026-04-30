@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "fonts": [
+    {
+      "id": "source-code-pro",
+      "displayName": "Source Code Pro",
+      "family": "Source Code Pro",
+      "fileName": "SourceCodePro-Regular.ttf",
+      "url": "https://github.com/adobe-fonts/source-code-pro/raw/release/TTF/SourceCodePro-Regular.ttf",
+      "sha256": "74bd80d3e42a08517cd7e1108ba3d86f2da29ac0f3065be95e0357956ab9db37",
+      "sizeBytes": 210312,
+      "license": "OFL-1.1",
+      "licenseUrl": "https://github.com/adobe-fonts/source-code-pro/blob/release/LICENSE.md"
+    },
+    {
+      "id": "inconsolata",
+      "displayName": "Inconsolata",
+      "family": "Inconsolata",
+      "fileName": "Inconsolata-Regular.ttf",
+      "url": "https://github.com/google/fonts/raw/main/ofl/inconsolata/static/Inconsolata-Regular.ttf",
+      "sha256": "0f11ac40d1618e1aa1adb7322a14980a0b0c943421124022073f83236d15f0d5",
+      "sizeBytes": 105628,
+      "license": "OFL-1.1",
+      "licenseUrl": "https://github.com/google/fonts/blob/main/ofl/inconsolata/OFL.txt"
+    },
+    {
+      "id": "roboto-mono",
+      "displayName": "Roboto Mono",
+      "family": "Roboto Mono",
+      "fileName": "RobotoMono-Regular.ttf",
+      "url": "https://github.com/googlefonts/RobotoMono/raw/main/fonts/ttf/RobotoMono-Regular.ttf",
+      "sha256": "af0bff7599c3df3831755c16e39b3c496df74b8c8d8a1161b14dc8461be17cb4",
+      "sizeBytes": 125748,
+      "license": "Apache-2.0",
+      "licenseUrl": "https://github.com/googlefonts/RobotoMono/blob/main/LICENSE"
+    },
+    {
+      "id": "ubuntu-mono",
+      "displayName": "Ubuntu Mono",
+      "family": "Ubuntu Mono",
+      "fileName": "UbuntuMono-Regular.ttf",
+      "url": "https://github.com/google/fonts/raw/main/ufl/ubuntumono/UbuntuMono-Regular.ttf",
+      "sha256": "b35dd9d2131d5d83a9b87fe9ad22c6288fa3d17688d43302c14da29812417d63",
+      "sizeBytes": 205748,
+      "license": "UFL-1.0",
+      "licenseUrl": "https://github.com/google/fonts/blob/main/ufl/ubuntumono/UFL.txt"
+    }
+  ]
+}
