@@ -122,6 +122,8 @@
         <Border Grid.Row="1" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"
                 BorderThickness="1" BorderBrush="{DynamicResource PanelBorder}" Padding="24"
                 Background="{DynamicResource PanelBackground}" CornerRadius="8">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,8,0">
             <StackPanel MaxWidth="500">
                 <TextBlock Text="Connection Details" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16"
                            Foreground="{DynamicResource TextPrimary}"/>
@@ -165,6 +167,7 @@
                     <Button Content="Cancel" Command="{Binding CancelEditCommand}" Padding="16,6" FontSize="13"/>
                 </StackPanel>
             </StackPanel>
+            </ScrollViewer>
         </Border>
         </Grid>
     </Grid>
