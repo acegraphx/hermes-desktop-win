@@ -11,8 +11,18 @@
 
         <!-- Left: skill list -->
         <DockPanel Grid.Column="0">
-            <TextBlock DockPanel.Dock="Top" Text="Skills" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12"
-                       Foreground="{DynamicResource TextPrimary}"/>
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <TextBlock Text="Skills" FontSize="22" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="New" Command="{Binding NewSkillCommand}"
+                            Padding="10,3" FontSize="12" Margin="0,0,4,0"
+                            Style="{StaticResource AccentButton}"
+                            ToolTip="Create a new local skill"/>
+                    <Button Content="Reload" Command="{Binding LoadSkillsCommand}"
+                            Padding="10,3" FontSize="12"/>
+                </StackPanel>
+            </DockPanel>
 
             <TextBox DockPanel.Dock="Top" Text="{Binding FilterQuery, UpdateSourceTrigger=PropertyChanged, Delay=200}"
                      Padding="8,6" FontSize="13" Margin="0,0,0,8"/>
@@ -31,6 +41,12 @@
                                     <TextBlock Text="{Binding DisplayCategory}" FontSize="10"
                                                Foreground="{DynamicResource BadgePrimaryForeground}"/>
                                 </Border>
+                                <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3" Padding="6,1" Margin="0,0,6,0"
+                                        Visibility="{Binding IsExternal, Converter={StaticResource BoolToVisibility}}"
+                                        ToolTip="Sourced from a configured external skills directory; read-only.">
+                                    <TextBlock Text="External" FontSize="10"
+                                               Foreground="{DynamicResource BadgeInfoForeground}"/>
+                                </Border>
                                 <TextBlock Text="{Binding Version}" FontSize="10" Foreground="{DynamicResource TextMuted}"
                                            Visibility="{Binding Version, Converter={StaticResource NullToVisibility}}"/>
                             </StackPanel>
@@ -46,7 +62,7 @@
         <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center"
                       VerticalAlignment="Stretch" Background="{DynamicResource SplitterBrush}" Margin="8,0"/>
 
-        <!-- Right: skill detail -->
+        <!-- Right: skill detail / editor -->
         <DockPanel Grid.Column="2">
             <!-- Empty state -->
             <TextBlock Text="Select a skill to view details" FontSize="14" Foreground="{DynamicResource TextTertiary}"
@@ -56,73 +72,209 @@
                     <Style TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed"/>
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding SelectedSkill}" Value="{x:Null}">
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding SelectedSkill}" Value="{x:Null}"/>
+                                    <Condition Binding="{Binding IsCreating}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
                                 <Setter Property="Visibility" Value="Visible"/>
-                            </DataTrigger>
+                            </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
 
-            <!-- Detail content -->
-            <DockPanel Visibility="{Binding SelectedSkill, Converter={StaticResource NullToVisibility}}">
-                <!-- Header -->
-                <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedSkill.DisplayName}" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4"
-                           Foreground="{DynamicResource TextPrimary}"/>
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                    <Border Background="{DynamicResource BadgePrimaryBackground}" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
-                        <TextBlock Text="{Binding SelectedSkill.DisplayCategory}" FontSize="11"
-                                   Foreground="{DynamicResource BadgePrimaryForeground}"/>
-                    </Border>
-                    <TextBlock Text="{Binding SelectedSkill.Version}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
-                               VerticalAlignment="Center"
-                               Visibility="{Binding SelectedSkill.Version, Converter={StaticResource NullToVisibility}}"/>
-                </StackPanel>
+            <!-- New-skill panel (when IsCreating) -->
+            <DockPanel Visibility="{Binding IsCreating, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock DockPanel.Dock="Top" Text="New skill" FontSize="20" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                <TextBlock DockPanel.Dock="Top" FontSize="12" Foreground="{DynamicResource TextTertiary}"
+                           Margin="0,0,0,4"
+                           Text="Folder under ~/.hermes/skills (creates &lt;path&gt;/SKILL.md). Use letters, numbers, dots, dashes, underscores; '/' to nest."/>
+                <TextBox DockPanel.Dock="Top" Margin="0,0,0,8" Padding="8,6" FontSize="13"
+                         FontFamily="Consolas"
+                         Text="{Binding NewSkillRelativePath, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock DockPanel.Dock="Top" Text="{Binding NewSkillError}" FontSize="11"
+                           Foreground="{DynamicResource ErrorText}" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Visibility="{Binding NewSkillError, Converter={StaticResource NullToVisibility}}"/>
 
-                <!-- Description -->
-                <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedSkill.Description}" FontSize="13" Foreground="{DynamicResource TextSecondary}"
-                           TextWrapping="Wrap" Margin="0,0,0,12"
-                           Visibility="{Binding SelectedSkill.Description, Converter={StaticResource NullToVisibility}}"/>
-
-                <!-- Metadata -->
-                <Border DockPanel.Dock="Top" Background="{DynamicResource CardBackground}" CornerRadius="6" Padding="12" Margin="0,0,0,12"
-                        BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1">
-                    <StackPanel>
-                        <TextBlock FontSize="12" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}">
-                            <Run Text="Slug: " Foreground="{DynamicResource TextTertiary}"/>
-                            <Run Text="{Binding SelectedSkill.Slug, Mode=OneWay}" FontFamily="Consolas"/>
-                        </TextBlock>
-                        <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}">
-                            <Run Text="Path: " Foreground="{DynamicResource TextTertiary}"/>
-                            <Run Text="{Binding SelectedSkill.RelativePath, Mode=OneWay}" FontFamily="Consolas"/>
-                        </TextBlock>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="Cancel" Command="{Binding DiscardChangesCommand}"
+                                Padding="12,4" FontSize="12" Margin="0,0,8,0"/>
+                        <Button Content="Create" Command="{Binding SaveSkillCommand}"
+                                Padding="12,4" FontSize="12"
+                                Style="{StaticResource AccentButton}"/>
                     </StackPanel>
-                </Border>
+                </DockPanel>
 
-                <!-- Tags -->
-                <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding SelectedSkill.Tags}" Margin="0,0,0,12">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3" Padding="8,2" Margin="0,0,4,4">
-                                <TextBlock Text="{Binding}" FontSize="11" Foreground="{DynamicResource BadgeInfoForeground}"/>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <TextBox Text="{Binding EditorContent, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                         FontFamily="Consolas" FontSize="13"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+            </DockPanel>
 
-                <!-- Loading detail -->
-                <TextBlock DockPanel.Dock="Top" Text="Loading skill content..." Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,8"
-                           Visibility="{Binding IsLoadingDetail, Converter={StaticResource BoolToVisibility}}"/>
+            <!-- Detail content (when a skill is selected and not creating) -->
+            <DockPanel>
+                <DockPanel.Style>
+                    <Style TargetType="DockPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsCreating}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DockPanel.Style>
+                <DockPanel.Resources>
+                    <Style x:Key="DetailRoot" TargetType="DockPanel">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedSkill, Converter={StaticResource NullToVisibility}}" Value="Visible">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DockPanel.Resources>
 
-                <!-- Markdown content — last child fills remaining space -->
-                <controls:MarkdownControl MarkdownText="{Binding SelectedSkillMarkdown}"
-                                          Margin="0,0,0,12"
-                                          Visibility="{Binding SelectedSkillMarkdown, Converter={StaticResource NullToVisibility}}"/>
+                <DockPanel Style="{StaticResource DetailRoot}">
+                    <!-- Header row: title + edit/save/discard buttons -->
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4" LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                            <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" FontSize="11"
+                                       Foreground="{DynamicResource TextTertiary}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SaveStatus, Converter={StaticResource NullToVisibility}}" Value="Visible">
+                                                <Setter Property="Text" Value="{Binding SaveStatus}"/>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                                <Setter Property="Text" Value="• Modified"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsSaving}" Value="True">
+                                                <Setter Property="Text" Value="Saving…"/>
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <Button Content="Edit" Command="{Binding EditSkillCommand}"
+                                    Padding="10,3" FontSize="12" Margin="0,0,4,0"
+                                    Visibility="{Binding CanEdit, Converter={StaticResource BoolToVisibility}}"/>
+                            <Button Padding="10,3" FontSize="12" Margin="0,0,4,0"
+                                    IsEnabled="False"
+                                    Visibility="{Binding SelectedSkill.IsReadOnly, Converter={StaticResource BoolToVisibility}}"
+                                    ToolTip="External skills are read-only. Create a local skill at the same path to override.">
+                                <TextBlock Text="Read-only" Foreground="{DynamicResource TextMuted}"/>
+                            </Button>
+                            <Button Content="Discard" Command="{Binding DiscardChangesCommand}"
+                                    Padding="10,3" FontSize="12" Margin="0,0,4,0"
+                                    Style="{StaticResource DangerButton}"
+                                    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"/>
+                            <Button Content="Save" Command="{Binding SaveSkillCommand}"
+                                    Padding="10,3" FontSize="12"
+                                    Style="{StaticResource AccentButton}"
+                                    Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding SelectedSkill.DisplayName}" FontSize="20" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                    </DockPanel>
+
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Border Background="{DynamicResource BadgePrimaryBackground}" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
+                            <TextBlock Text="{Binding SelectedSkill.DisplayCategory}" FontSize="11"
+                                       Foreground="{DynamicResource BadgePrimaryForeground}"/>
+                        </Border>
+                        <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3" Padding="8,2" Margin="0,0,8,0"
+                                Visibility="{Binding SelectedSkill.IsExternal, Converter={StaticResource BoolToVisibility}}"
+                                ToolTip="Sourced from a configured external skills directory; read-only.">
+                            <TextBlock Text="External" FontSize="11"
+                                       Foreground="{DynamicResource BadgeInfoForeground}"/>
+                        </Border>
+                        <TextBlock Text="{Binding SelectedSkill.Version}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
+                                   VerticalAlignment="Center"
+                                   Visibility="{Binding SelectedSkill.Version, Converter={StaticResource NullToVisibility}}"/>
+                    </StackPanel>
+
+                    <TextBlock DockPanel.Dock="Top" Text="{Binding SelectedSkill.Description}" FontSize="13" Foreground="{DynamicResource TextSecondary}"
+                               TextWrapping="Wrap" Margin="0,0,0,12"
+                               Visibility="{Binding SelectedSkill.Description, Converter={StaticResource NullToVisibility}}"/>
+
+                    <Border DockPanel.Dock="Top" Background="{DynamicResource CardBackground}" CornerRadius="6" Padding="12" Margin="0,0,0,12"
+                            BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1">
+                        <StackPanel>
+                            <TextBlock FontSize="12" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondary}">
+                                <Run Text="Slug: " Foreground="{DynamicResource TextTertiary}"/>
+                                <Run Text="{Binding SelectedSkill.Slug, Mode=OneWay}" FontFamily="Consolas"/>
+                            </TextBlock>
+                            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}">
+                                <Run Text="Path: " Foreground="{DynamicResource TextTertiary}"/>
+                                <Run Text="{Binding SelectedSkill.RelativePath, Mode=OneWay}" FontFamily="Consolas"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding SelectedSkill.Tags}" Margin="0,0,0,12">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3" Padding="8,2" Margin="0,0,4,4">
+                                    <TextBlock Text="{Binding}" FontSize="11" Foreground="{DynamicResource BadgeInfoForeground}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10,6" CornerRadius="6"
+                            Background="{DynamicResource WarningBackground}" BorderBrush="{DynamicResource WarningBorder}"
+                            BorderThickness="1"
+                            Visibility="{Binding ConflictMessage, Converter={StaticResource NullToVisibility}}">
+                        <TextBlock Text="{Binding ConflictMessage}" Foreground="{DynamicResource WarningText}"
+                                   FontSize="12" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <TextBlock DockPanel.Dock="Top" Text="Loading skill content..." Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,8"
+                               Visibility="{Binding IsLoadingDetail, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <!-- Editor (when editing) -->
+                    <TextBox Text="{Binding EditorContent, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" AcceptsTab="True" TextWrapping="NoWrap"
+                             FontFamily="Consolas" FontSize="13"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <!-- Read-only markdown preview (when not editing) -->
+                    <controls:MarkdownControl MarkdownText="{Binding SelectedSkillMarkdown}"
+                                              Margin="0,0,0,12">
+                        <controls:MarkdownControl.Style>
+                            <Style TargetType="controls:MarkdownControl">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SelectedSkillMarkdown, Converter={StaticResource NullToVisibility}}" Value="Collapsed">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </controls:MarkdownControl.Style>
+                    </controls:MarkdownControl>
+                </DockPanel>
             </DockPanel>
         </DockPanel>
     </Grid>
