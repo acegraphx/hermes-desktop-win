@@ -1,9 +1,12 @@
 name: Build & Release
 
+# Runs only when a semver-style tag (v1.2.3) is pushed.
+# Master pushes no longer auto-publish — release by pushing a tag:
+#   git tag v1.5.0 && git push origin v1.5.0
 on:
   push:
-    branches:
-      - master
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
@@ -30,19 +33,10 @@ jobs:
             -p:EnableCompressionInSingleFile=true `
             -o ./publish
 
-      - name: Generate version tag
-        id: version
-        run: |
-          $date = Get-Date -Format "yyyy.MM.dd"
-          $count = git tag -l "$date.*" | Measure-Object | Select-Object -ExpandProperty Count
-          $version = "$date.$($count + 1)"
-          echo "tag=v$version" >> $env:GITHUB_OUTPUT
-          echo "Version: v$version"
-
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           files: publish/HermesDesktop.exe
           generate_release_notes: true
