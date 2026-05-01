@@ -56,6 +56,10 @@ This app gives you a clean native desktop window into all of that. It connects o
 |----------|----------|
 | ![Overview](screenshots/overview.png) | ![Sessions](screenshots/sessions.png) |
 
+| Wiki | Files |
+|------|-------|
+| ![Wiki](screenshots/wiki.png) | ![Files](screenshots/files.png) |
+
 | Usage | Skills |
 |-------|--------|
 | ![Usage](screenshots/usage.png) | ![Skills](screenshots/skills.png) |
