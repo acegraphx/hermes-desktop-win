@@ -11,6 +11,7 @@ namespace HermesDesktop.ViewModels;
 public partial class UsageBrowserViewModel : ObservableObject
 {
     private readonly IRemoteScriptExecutor _executor;
+    private readonly IRemoteHermesService _hermes;
     private readonly MainViewModel _mainVm;
     private readonly ILogger<UsageBrowserViewModel> _logger;
 
@@ -56,16 +57,32 @@ public partial class UsageBrowserViewModel : ObservableObject
     [ObservableProperty]
     private List<Controls.BarDataPoint> _recentSessionBars = new();
 
+    [ObservableProperty]
+    private bool _isHostWide;
+
+    [ObservableProperty]
+    private HostWideUsageSummary? _hostWideSummary;
+
+    public bool HasMultipleProfiles => HostWideSummary != null && HostWideSummary.Profiles.Count > 1;
+
     public UsageBrowserViewModel(
         IRemoteScriptExecutor executor,
+        IRemoteHermesService hermes,
         MainViewModel mainVm,
         ILogger<UsageBrowserViewModel> logger)
     {
         _executor = executor;
+        _hermes = hermes;
         _mainVm = mainVm;
         _logger = logger;
 
         _ = LoadUsageAsync();
+    }
+
+    partial void OnIsHostWideChanged(bool value)
+    {
+        if (value)
+            _ = LoadHostWideAsync();
     }
 
     [RelayCommand]
@@ -77,6 +94,12 @@ public partial class UsageBrowserViewModel : ObservableObject
         {
             IsLoading = true;
             ErrorMessage = null;
+
+            if (IsHostWide)
+            {
+                await LoadHostWideAsync();
+                return;
+            }
 
             var json = await _executor.ExecuteRawAsync(
                 _mainVm.ActiveConnection, "query_usage.py");
@@ -90,20 +113,12 @@ public partial class UsageBrowserViewModel : ObservableObject
                 return;
             }
 
-            SessionCount = result.SessionCount;
-            InputTokens = result.InputTokens;
-            OutputTokens = result.OutputTokens;
-            CacheReadTokens = result.CacheReadTokens;
-            CacheWriteTokens = result.CacheWriteTokens;
-            ReasoningTokens = result.ReasoningTokens;
-            OnPropertyChanged(nameof(TotalTokens));
-            OnPropertyChanged(nameof(AllTokenCategoriesTotal));
+            ApplyActiveTotals(result);
 
             TopSessions = new ObservableCollection<UsageTopSession>(result.TopSessions ?? new());
             TopModels = new ObservableCollection<UsageTopModel>(result.TopModels ?? new());
             OnPropertyChanged(nameof(AveragePerSession));
 
-            // Build bar chart data from recent sessions
             RecentSessionBars = (result.RecentSessions ?? new())
                 .Select(s => new Controls.BarDataPoint
                 {
@@ -120,6 +135,119 @@ public partial class UsageBrowserViewModel : ObservableObject
         {
             IsLoading = false;
         }
+    }
+
+    private async Task LoadHostWideAsync()
+    {
+        if (_mainVm.ActiveConnection == null) return;
+
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            var overview = await _hermes.GetOverviewAsync(_mainVm.ActiveConnection);
+            var profiles = overview.AvailableProfiles?
+                .Where(p => p.Exists)
+                .ToList() ?? new();
+
+            if (profiles.Count == 0)
+            {
+                HostWideSummary = new HostWideUsageSummary();
+                OnPropertyChanged(nameof(HasMultipleProfiles));
+                return;
+            }
+
+            var rows = new List<ProfileUsageRow>();
+            var activeName = _mainVm.ActiveConnection.ResolvedHermesProfileName;
+
+            foreach (var prof in profiles)
+            {
+                var row = new ProfileUsageRow
+                {
+                    ProfileName = prof.DisplayName,
+                    ProfilePath = prof.Path,
+                    IsActive = string.Equals(prof.IsDefault ? "default" : prof.Name, activeName, StringComparison.OrdinalIgnoreCase),
+                };
+
+                try
+                {
+                    var args = new Dictionary<string, object>
+                    {
+                        ["hermes_home"] = prof.Path
+                    };
+                    var json = await _executor.ExecuteRawAsync(
+                        _mainVm.ActiveConnection, "query_usage.py", args);
+                    var result = System.Text.Json.JsonSerializer.Deserialize<UsageResponse>(json,
+                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (result?.Ok == true)
+                    {
+                        row.IsAvailable = true;
+                        row.SessionCount = result.SessionCount;
+                        row.InputTokens = result.InputTokens;
+                        row.OutputTokens = result.OutputTokens;
+                        row.CacheReadTokens = result.CacheReadTokens;
+                        row.CacheWriteTokens = result.CacheWriteTokens;
+                        row.ReasoningTokens = result.ReasoningTokens;
+                    }
+                    else
+                    {
+                        row.IsAvailable = false;
+                        row.UnavailableReason = result?.Error ?? "Usage unavailable";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    row.IsAvailable = false;
+                    row.UnavailableReason = ex.Message;
+                    _logger.LogDebug(ex, "Host-wide usage skipped profile {Name}", prof.Name);
+                }
+
+                rows.Add(row);
+            }
+
+            var summary = new HostWideUsageSummary { Profiles = rows };
+            HostWideSummary = summary;
+
+            // Mirror aggregated totals into the existing display fields so the top cards work too.
+            SessionCount = summary.TotalSessions;
+            InputTokens = summary.TotalInputTokens;
+            OutputTokens = summary.TotalOutputTokens;
+            CacheReadTokens = summary.TotalCacheReadTokens;
+            CacheWriteTokens = summary.TotalCacheWriteTokens;
+            ReasoningTokens = summary.TotalReasoningTokens;
+            OnPropertyChanged(nameof(TotalTokens));
+            OnPropertyChanged(nameof(AllTokenCategoriesTotal));
+            OnPropertyChanged(nameof(AveragePerSession));
+            OnPropertyChanged(nameof(HasMultipleProfiles));
+
+            // Top-sessions / top-models / bar chart aren't aggregated for host-wide;
+            // clear them to avoid showing a stale single-profile view.
+            TopSessions = new ObservableCollection<UsageTopSession>();
+            TopModels = new ObservableCollection<UsageTopModel>();
+            RecentSessionBars = new List<Controls.BarDataPoint>();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ApplyActiveTotals(UsageResponse result)
+    {
+        SessionCount = result.SessionCount;
+        InputTokens = result.InputTokens;
+        OutputTokens = result.OutputTokens;
+        CacheReadTokens = result.CacheReadTokens;
+        CacheWriteTokens = result.CacheWriteTokens;
+        ReasoningTokens = result.ReasoningTokens;
+        OnPropertyChanged(nameof(TotalTokens));
+        OnPropertyChanged(nameof(AllTokenCategoriesTotal));
     }
 }
 

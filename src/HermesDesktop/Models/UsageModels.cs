@@ -67,3 +67,38 @@ public class DailyUsage
 
     public long TotalTokens => InputTokens + OutputTokens;
 }
+
+public class ProfileUsageRow
+{
+    public string ProfileName { get; set; } = string.Empty;
+    public string ProfilePath { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public bool IsAvailable { get; set; }
+    public string? UnavailableReason { get; set; }
+    public int SessionCount { get; set; }
+    public long InputTokens { get; set; }
+    public long OutputTokens { get; set; }
+    public long CacheReadTokens { get; set; }
+    public long CacheWriteTokens { get; set; }
+    public long ReasoningTokens { get; set; }
+
+    public long TotalTokens => InputTokens + OutputTokens;
+    public long AllCategoriesTotal =>
+        InputTokens + OutputTokens + CacheReadTokens + CacheWriteTokens + ReasoningTokens;
+}
+
+public class HostWideUsageSummary
+{
+    public List<ProfileUsageRow> Profiles { get; set; } = new();
+
+    public int ReadableProfileCount => Profiles.Count(p => p.IsAvailable);
+    public int TotalSessions => Profiles.Where(p => p.IsAvailable).Sum(p => p.SessionCount);
+    public long TotalInputTokens => Profiles.Where(p => p.IsAvailable).Sum(p => p.InputTokens);
+    public long TotalOutputTokens => Profiles.Where(p => p.IsAvailable).Sum(p => p.OutputTokens);
+    public long TotalCacheReadTokens => Profiles.Where(p => p.IsAvailable).Sum(p => p.CacheReadTokens);
+    public long TotalCacheWriteTokens => Profiles.Where(p => p.IsAvailable).Sum(p => p.CacheWriteTokens);
+    public long TotalReasoningTokens => Profiles.Where(p => p.IsAvailable).Sum(p => p.ReasoningTokens);
+    public long TotalTokens => TotalInputTokens + TotalOutputTokens;
+    public long TotalAllCategories =>
+        TotalInputTokens + TotalOutputTokens + TotalCacheReadTokens + TotalCacheWriteTokens + TotalReasoningTokens;
+}

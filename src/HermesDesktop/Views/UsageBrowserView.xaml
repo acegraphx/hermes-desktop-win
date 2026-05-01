@@ -14,12 +14,19 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       Visibility="{Binding IsLoading, Converter={StaticResource InverseBoolToVisibility}}">
             <StackPanel MaxWidth="700">
-                <DockPanel Margin="0,0,0,20">
+                <DockPanel Margin="0,0,0,12">
                     <Button DockPanel.Dock="Right" Content="Refresh" Command="{Binding LoadUsageCommand}"
                             Padding="12,4"/>
                     <TextBlock Text="Usage" FontSize="22" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextPrimary}"/>
                 </DockPanel>
+
+                <!-- Scope toggle: aggregate across all readable Hermes profiles on this host -->
+                <CheckBox Content="Aggregate across all profiles on this host"
+                          IsChecked="{Binding IsHostWide}"
+                          ToolTip="Sum totals across every readable Hermes profile on this host"
+                          Margin="0,0,0,16" VerticalContentAlignment="Center"
+                          Foreground="{DynamicResource TextSecondary}"/>
 
                 <!-- Totals -->
                 <UniformGrid Columns="3" Margin="0,0,0,24">
@@ -87,35 +94,84 @@
                     </Border>
                 </UniformGrid>
 
-                <!-- Top models -->
-                <TextBlock Text="Top Models" FontSize="16" FontWeight="Medium" Margin="0,0,0,8"
-                           Foreground="{DynamicResource TextPrimary}"/>
-                <ItemsControl ItemsSource="{Binding TopModels}" Margin="0,0,0,24">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Display}" FontSize="13" Margin="0,4"
-                                       Foreground="{DynamicResource TextSecondary}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <!-- Per-profile breakdown (only when host-wide) -->
+                <StackPanel Margin="0,0,0,24"
+                            Visibility="{Binding IsHostWide, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="Per-profile breakdown" FontSize="16" FontWeight="Medium" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextPrimary}"/>
+                    <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
+                            BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1" Padding="12,8">
+                        <ItemsControl ItemsSource="{Binding HostWideSummary.Profiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ProfileName}" FontSize="13" FontWeight="Medium"
+                                                       Foreground="{DynamicResource TextPrimary}"/>
+                                            <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3" Padding="6,1" Margin="8,0,0,0"
+                                                    Visibility="{Binding IsActive, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock Text="active" FontSize="10"
+                                                           Foreground="{DynamicResource BadgeInfoForeground}"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding UnavailableReason}" FontSize="11"
+                                                       Foreground="{DynamicResource ErrorText}" Margin="8,0,0,0"
+                                                       Visibility="{Binding UnavailableReason, Converter={StaticResource NullToVisibility}}"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1" Text="{Binding SessionCount, StringFormat='{}{0:N0} sessions'}"
+                                                   FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                                   Margin="12,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding TotalTokens, StringFormat='{}{0:N0} tokens'}"
+                                                   FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                                   Margin="12,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding ProfilePath}" FontFamily="Consolas"
+                                                   FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                                                   Margin="12,0,0,0" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" MaxWidth="240"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
 
-                <!-- Top sessions -->
-                <TextBlock Text="Top Sessions by Token Usage" FontSize="16" FontWeight="Medium" Margin="0,0,0,8"
-                           Foreground="{DynamicResource TextPrimary}"/>
-                <ItemsControl ItemsSource="{Binding TopSessions}" Margin="0,0,0,24">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Display}" FontSize="13" Margin="0,4"
-                                       Foreground="{DynamicResource TextSecondary}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <!-- Single-profile-only panels (hidden when aggregating host-wide) -->
+                <StackPanel Visibility="{Binding IsHostWide, Converter={StaticResource InverseBoolToVisibility}}">
+                    <!-- Top models -->
+                    <TextBlock Text="Top Models" FontSize="16" FontWeight="Medium" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextPrimary}"/>
+                    <ItemsControl ItemsSource="{Binding TopModels}" Margin="0,0,0,24">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Display}" FontSize="13" Margin="0,4"
+                                           Foreground="{DynamicResource TextSecondary}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                <!-- Recent Sessions Bar Chart -->
-                <controls:SimpleBarChart ChartTitle="Recent Sessions (token usage)"
-                                         Values="{Binding RecentSessionBars}"
-                                         MaxBarHeight="120" Height="180"
-                                         Margin="0,0,0,16"/>
+                    <!-- Top sessions -->
+                    <TextBlock Text="Top Sessions by Token Usage" FontSize="16" FontWeight="Medium" Margin="0,0,0,8"
+                               Foreground="{DynamicResource TextPrimary}"/>
+                    <ItemsControl ItemsSource="{Binding TopSessions}" Margin="0,0,0,24">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Display}" FontSize="13" Margin="0,4"
+                                           Foreground="{DynamicResource TextSecondary}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Recent Sessions Bar Chart -->
+                    <controls:SimpleBarChart ChartTitle="Recent Sessions (token usage)"
+                                             Values="{Binding RecentSessionBars}"
+                                             MaxBarHeight="120" Height="180"
+                                             Margin="0,0,0,16"/>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
     </Grid>
