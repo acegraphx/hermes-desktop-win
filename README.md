@@ -36,8 +36,8 @@ This app gives you a clean native desktop window into all of that. It connects o
 
 ### Automation & insight
 - **Cron Jobs** &mdash; Browse and create scheduled jobs through a friendly UI: pick hourly / daily / weekly / monthly / "every N hours" / one-shot at a date, or drop in a raw cron expression. Pause, resume, run-now, edit, or delete each job without touching the server.
-- **Usage** &mdash; Token-usage dashboard. See input / output / cache-read / cache-write / reasoning totals, per-model breakdown, provider attribution, cost estimates, and a bar chart of your recent sessions.
-- **Skills** &mdash; Recursive view of every `SKILL.md` in `~/.hermes/skills/`. YAML frontmatter, tags, and rendered markdown.
+- **Usage** &mdash; Token-usage dashboard. See input / output / cache-read / cache-write / reasoning totals, per-model breakdown, provider attribution, cost estimates, and a bar chart of your recent sessions. Tick **"Aggregate across all profiles on this host"** to roll up the totals across every readable Hermes profile, with a per-profile breakdown table.
+- **Skills** &mdash; Recursive view of every `SKILL.md` in `~/.hermes/skills/` plus any external directories listed in `skills.external_dirs` in `~/.hermes/config.yaml` (with local skills taking precedence). Edit local skills inline (atomic save with conflict detection) or create new ones. External skills show an "External" badge and are read-only.
 
 ### Multiple hosts & profiles
 - **Connection management** &mdash; Add, edit, test, and delete SSH profiles. Click **Import SSH Config** to pull hosts from your `~/.ssh/config`.
