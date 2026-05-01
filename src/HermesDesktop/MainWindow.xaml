@@ -149,9 +149,32 @@
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" Margin="8,5"
                                         ToolTip="{Binding Label}">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.IsSidebarCollapsed,
+                                                                   RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
                                 <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets"
                                            FontSize="14" Foreground="{DynamicResource TextTertiary}"
-                                           Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Margin" Value="0,0,10,0"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DataContext.IsSidebarCollapsed,
+                                                                       RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                                    <Setter Property="Margin" Value="0"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <TextBlock Text="{Binding Label}" FontSize="13"
                                            Foreground="{DynamicResource TextSecondary}"
                                            Visibility="{Binding DataContext.IsSidebarCollapsed,
