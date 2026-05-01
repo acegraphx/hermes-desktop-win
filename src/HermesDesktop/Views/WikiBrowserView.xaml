@@ -268,18 +268,23 @@
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                         <TextBlock VerticalAlignment="Center" Margin="0,0,8,0" FontSize="11"
-                                   Foreground="{DynamicResource TextTertiary}">
+                                   Foreground="{DynamicResource TextTertiary}"
+                                   ToolTip="Autosave on; Ctrl+S saves immediately">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SaveStatus, Converter={StaticResource NullToVisibility}}" Value="Visible">
+                                            <Setter Property="Text" Value="{Binding SaveStatus}"/>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding IsDirty}" Value="True">
-                                            <Setter Property="Text" Value="• Modified"/>
+                                            <Setter Property="Text" Value="Unsaved (autosaving…)"/>
                                             <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsSaving}" Value="True">
-                                            <Setter Property="Text" Value="Saving..."/>
+                                            <Setter Property="Text" Value="Saving…"/>
                                             <Setter Property="Visibility" Value="Visible"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -315,9 +320,9 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="{Binding EditorRowHeight}" MinHeight="0"/>
+                        <RowDefinition x:Name="EditorRow" Height="{Binding EditorRowHeight}" MinHeight="0"/>
                         <RowDefinition Height="{Binding SplitterRowHeight}"/>
-                        <RowDefinition Height="{Binding PreviewRowHeight}" MinHeight="0"/>
+                        <RowDefinition x:Name="PreviewRow" Height="{Binding PreviewRowHeight}" MinHeight="0"/>
                     </Grid.RowDefinitions>
 
                     <controls:WikiEditorControl Grid.Row="0" x:Name="Editor"
@@ -328,6 +333,7 @@
 
                     <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                   Background="{DynamicResource SplitterBrush}"
+                                  DragCompleted="OnSplitDragCompleted"
                                   Visibility="{Binding IsEditorVisible, Converter={StaticResource BoolToVisibility}}">
                         <GridSplitter.Style>
                             <Style TargetType="GridSplitter">

@@ -24,4 +24,13 @@ public class AppPreferences
 
     [JsonPropertyName("sidebarExpandedWidth")]
     public double SidebarExpandedWidth { get; set; } = 220;
+
+    [JsonPropertyName("wikiViewMode")]
+    public string WikiViewMode { get; set; } = "Preview";
+
+    [JsonPropertyName("wikiSplitEditorRatio")]
+    public double WikiSplitEditorRatio { get; set; } = 0.5;
+
+    [JsonPropertyName("wikiAutosave")]
+    public bool WikiAutosave { get; set; } = true;
 }

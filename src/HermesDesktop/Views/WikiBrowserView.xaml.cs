@@ -40,4 +40,14 @@ public partial class WikiBrowserView : UserControl
         if (DataContext is WikiBrowserViewModel vm && vm.SaveCommand.CanExecute(null))
             vm.SaveCommand.Execute(null);
     }
+
+    private void OnSplitDragCompleted(object? sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        if (DataContext is not WikiBrowserViewModel vm) return;
+        var editor = EditorRow.ActualHeight;
+        var preview = PreviewRow.ActualHeight;
+        var total = editor + preview;
+        if (total <= 0) return;
+        vm.UpdateSplitRatio(editor / total);
+    }
 }

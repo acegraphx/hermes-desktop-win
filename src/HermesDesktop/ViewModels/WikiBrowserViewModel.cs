@@ -17,6 +17,8 @@ public partial class WikiBrowserViewModel : ObservableObject
     private readonly ILogger<WikiBrowserViewModel> _logger;
     private CancellationTokenSource? _searchCts;
     private CancellationTokenSource? _previewCts;
+    private CancellationTokenSource? _autosaveCts;
+    private bool _suppressViewModePersist;
 
     [ObservableProperty]
     private string? _wikiRoot;
@@ -92,16 +94,21 @@ public partial class WikiBrowserViewModel : ObservableObject
     private bool _isReverting;
 
     [ObservableProperty]
-    private WikiViewMode _viewMode = WikiViewMode.Split;
+    private WikiViewMode _viewMode = WikiViewMode.Preview;
 
     [ObservableProperty]
-    private GridLength _editorRowHeight = new(1, GridUnitType.Star);
+    private GridLength _editorRowHeight = new(0);
 
     [ObservableProperty]
     private GridLength _previewRowHeight = new(1, GridUnitType.Star);
 
     [ObservableProperty]
-    private GridLength _splitterRowHeight = new(6);
+    private GridLength _splitterRowHeight = new(0);
+
+    [ObservableProperty]
+    private string? _saveStatus;
+
+    private double _splitEditorRatio = 0.5;
 
     [ObservableProperty]
     private string _filterQuery = string.Empty;
@@ -137,8 +144,29 @@ public partial class WikiBrowserViewModel : ObservableObject
         AssetResolver = assetResolver;
 
         WikiRoot = _mainVm.ActiveConnection?.RemoteWikiPath;
+
+        var prefs = _connectionStore.Preferences;
+        _splitEditorRatio = Math.Clamp(prefs.WikiSplitEditorRatio, 0.1, 0.9);
+        _suppressViewModePersist = true;
+        try
+        {
+            ViewMode = ParseViewMode(prefs.WikiViewMode);
+        }
+        finally
+        {
+            _suppressViewModePersist = false;
+        }
+
         _ = LoadEntriesAsync();
     }
+
+    private static WikiViewMode ParseViewMode(string? raw) =>
+        raw switch
+        {
+            "Edit" => WikiViewMode.Edit,
+            "Split" => WikiViewMode.Split,
+            _ => WikiViewMode.Preview,
+        };
 
     partial void OnSelectedEntryChanged(WikiEntry? value)
     {
@@ -371,6 +399,7 @@ public partial class WikiBrowserViewModel : ObservableObject
             EditorContent = doc.Content;
             IsDirty = false;
             ConflictMessage = null;
+            SaveStatus = null;
             CurrentDir = doc.Dir ?? string.Empty;
             FrontmatterPairs = new ObservableCollection<FrontmatterPair>(BuildPairs(doc.Frontmatter));
             CurrentTags = new ObservableCollection<string>(doc.Tags ?? new List<string>());
@@ -427,6 +456,23 @@ public partial class WikiBrowserViewModel : ObservableObject
     {
         IsDirty = OpenedDocument != null && value != OpenedDocument.Content;
         _ = SchedulePreviewUpdateAsync(value);
+        if (IsDirty && _connectionStore.Preferences.WikiAutosave)
+            _ = ScheduleAutosaveAsync();
+    }
+
+    private async Task ScheduleAutosaveAsync()
+    {
+        _autosaveCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _autosaveCts = cts;
+        try
+        {
+            await Task.Delay(1500, cts.Token);
+            if (cts.IsCancellationRequested) return;
+            if (!IsDirty || IsSaving) return;
+            await SaveAsync();
+        }
+        catch (OperationCanceledException) { }
     }
 
     private async Task SchedulePreviewUpdateAsync(string value)
@@ -508,15 +554,64 @@ public partial class WikiBrowserViewModel : ObservableObject
         OnPropertyChanged(nameof(IsEditorVisible));
         OnPropertyChanged(nameof(IsPreviewVisible));
 
-        EditorRowHeight = value == WikiViewMode.Preview
-            ? new GridLength(0)
-            : new GridLength(1, GridUnitType.Star);
-        PreviewRowHeight = value == WikiViewMode.Edit
-            ? new GridLength(0)
-            : new GridLength(1, GridUnitType.Star);
-        SplitterRowHeight = value == WikiViewMode.Split
-            ? new GridLength(6)
-            : new GridLength(0);
+        switch (value)
+        {
+            case WikiViewMode.Edit:
+                EditorRowHeight = new GridLength(1, GridUnitType.Star);
+                PreviewRowHeight = new GridLength(0);
+                SplitterRowHeight = new GridLength(0);
+                break;
+            case WikiViewMode.Preview:
+                EditorRowHeight = new GridLength(0);
+                PreviewRowHeight = new GridLength(1, GridUnitType.Star);
+                SplitterRowHeight = new GridLength(0);
+                break;
+            case WikiViewMode.Split:
+                var ratio = Math.Clamp(_splitEditorRatio, 0.1, 0.9);
+                EditorRowHeight = new GridLength(ratio, GridUnitType.Star);
+                PreviewRowHeight = new GridLength(1.0 - ratio, GridUnitType.Star);
+                SplitterRowHeight = new GridLength(6);
+                break;
+        }
+
+        if (!_suppressViewModePersist)
+            _ = PersistViewModeAsync(value);
+    }
+
+    public void UpdateSplitRatio(double editorFraction)
+    {
+        var clamped = Math.Clamp(editorFraction, 0.1, 0.9);
+        if (Math.Abs(clamped - _splitEditorRatio) < 0.005) return;
+        _splitEditorRatio = clamped;
+        _ = PersistSplitRatioAsync(clamped);
+    }
+
+    private async Task PersistViewModeAsync(WikiViewMode mode)
+    {
+        try
+        {
+            var prefs = _connectionStore.Preferences;
+            prefs.WikiViewMode = mode.ToString();
+            await _connectionStore.SavePreferencesAsync(prefs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to persist wiki view mode");
+        }
+    }
+
+    private async Task PersistSplitRatioAsync(double ratio)
+    {
+        try
+        {
+            var prefs = _connectionStore.Preferences;
+            prefs.WikiSplitEditorRatio = ratio;
+            await _connectionStore.SavePreferencesAsync(prefs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to persist wiki split ratio");
+        }
     }
 
     [RelayCommand]
@@ -546,11 +641,13 @@ public partial class WikiBrowserViewModel : ObservableObject
             {
                 OpenedDocument = result.UpdatedDocument;
                 IsDirty = false;
+                SaveStatus = $"Saved {DateTime.Now:HH:mm:ss}";
                 _mainVm.ShowStatus("Saved");
             }
             else
             {
                 ConflictMessage = result.ConflictMessage ?? "Save failed.";
+                SaveStatus = null;
             }
         }
         catch (Exception ex)
