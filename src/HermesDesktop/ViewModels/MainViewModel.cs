@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,8 +15,10 @@ public partial class MainViewModel : ObservableObject
     private readonly IServiceProvider _serviceProvider;
     private readonly IConnectionStore _connectionStore;
     private readonly ISshTransport _sshTransport;
+    private readonly IUpdateCheckService _updateCheckService;
     private readonly ILogger<MainViewModel> _logger;
     private NavigationSection? _pendingSection;
+    private Action? _pendingNavigationAction;
     private bool _suppressPrefsSave;
 
     [ObservableProperty]
@@ -43,6 +46,12 @@ public partial class MainViewModel : ObservableObject
     private bool _isSidebarCollapsed;
 
     [ObservableProperty]
+    private bool _showUpdateDialog;
+
+    [ObservableProperty]
+    private UpdateCheckResult? _availableUpdate;
+
+    [ObservableProperty]
     private GridLength _sidebarColumnWidth = new(220);
 
     private double _lastExpandedWidth = 220;
@@ -59,6 +68,7 @@ public partial class MainViewModel : ObservableObject
         new() { Section = NavigationSection.Overview, Label = "Overview", IconGlyph = "\uE80F", RequiresConnection = true },
         new() { Section = NavigationSection.Files, Label = "Files", IconGlyph = "\uE8A5", RequiresConnection = true },
         new() { Section = NavigationSection.Sessions, Label = "Sessions", IconGlyph = "\uE8BD", RequiresConnection = true },
+        new() { Section = NavigationSection.Kanban, Label = "Kanban", IconGlyph = "\uE8FD", RequiresConnection = true },
         new() { Section = NavigationSection.Usage, Label = "Usage", IconGlyph = "\uE9D2", RequiresConnection = true },
         new() { Section = NavigationSection.Skills, Label = "Skills", IconGlyph = "\uE82D", RequiresConnection = true },
         new() { Section = NavigationSection.CronJobs, Label = "Cron Jobs", IconGlyph = "\uE823", RequiresConnection = true },
@@ -82,11 +92,13 @@ public partial class MainViewModel : ObservableObject
         IServiceProvider serviceProvider,
         IConnectionStore connectionStore,
         ISshTransport sshTransport,
+        IUpdateCheckService updateCheckService,
         ILogger<MainViewModel> logger)
     {
         _serviceProvider = serviceProvider;
         _connectionStore = connectionStore;
         _sshTransport = sshTransport;
+        _updateCheckService = updateCheckService;
         _logger = logger;
 
         _sshTransport.ConnectionStateChanged += OnConnectionStateChanged;
@@ -118,6 +130,26 @@ public partial class MainViewModel : ObservableObject
             var last = Connections.FirstOrDefault(c => c.Id == lastId);
             if (last != null)
                 ActiveConnection = last;
+        }
+
+        if (_connectionStore.Preferences.AutomaticUpdateChecks)
+            _ = CheckUpdatesIfDueAsync();
+    }
+
+    private async Task CheckUpdatesIfDueAsync()
+    {
+        var prefs = _connectionStore.Preferences;
+        if (prefs.LastAutomaticUpdateCheckAt is { } last &&
+            DateTime.UtcNow - last.ToUniversalTime() < TimeSpan.FromHours(24))
+            return;
+
+        var result = await _updateCheckService.CheckLatestReleaseAsync();
+        prefs.LastAutomaticUpdateCheckAt = DateTime.UtcNow;
+        await _connectionStore.SavePreferencesAsync(prefs);
+        if (result.HasUpdate && result.LatestVersion != prefs.LastDismissedRelease)
+        {
+            AvailableUpdate = result;
+            ShowUpdateDialog = true;
         }
     }
 
@@ -201,6 +233,8 @@ public partial class MainViewModel : ObservableObject
         {
             NavigateToSection(_pendingSection.Value);
             _pendingSection = null;
+            _pendingNavigationAction?.Invoke();
+            _pendingNavigationAction = null;
         }
     }
 
@@ -210,6 +244,7 @@ public partial class MainViewModel : ObservableObject
         ShowDiscardChangesDialog = false;
         // Revert the sidebar selection back to Files
         _pendingSection = null;
+        _pendingNavigationAction = null;
         OnPropertyChanged(nameof(SelectedSection));
     }
 
@@ -221,6 +256,7 @@ public partial class MainViewModel : ObservableObject
             NavigationSection.Overview => _serviceProvider.GetRequiredService<OverviewViewModel>(),
             NavigationSection.Files => _serviceProvider.GetRequiredService<FileEditorViewModel>(),
             NavigationSection.Sessions => _serviceProvider.GetRequiredService<SessionBrowserViewModel>(),
+            NavigationSection.Kanban => _serviceProvider.GetRequiredService<KanbanViewModel>(),
             NavigationSection.Usage => _serviceProvider.GetRequiredService<UsageBrowserViewModel>(),
             NavigationSection.Skills => _serviceProvider.GetRequiredService<SkillBrowserViewModel>(),
             NavigationSection.CronJobs => _serviceProvider.GetRequiredService<CronJobsViewModel>(),
@@ -252,6 +288,113 @@ public partial class MainViewModel : ObservableObject
     {
         if (CurrentContentViewModel is FileEditorViewModel fe && fe.IsDirty)
             fe.SaveFileCommand.Execute(null);
+    }
+
+    [RelayCommand]
+    private void RefreshCurrentSection()
+    {
+        switch (CurrentContentViewModel)
+        {
+            case SessionBrowserViewModel s:
+                s.LoadSessionsCommand.Execute(null);
+                break;
+            case KanbanViewModel k:
+                k.RefreshCommand.Execute(null);
+                break;
+            case CronJobsViewModel c:
+                c.RefreshCommand.Execute(null);
+                break;
+        }
+    }
+
+    [RelayCommand]
+    private void FindCurrentSection()
+    {
+        ShowStatus("Use the search box in the active section.");
+    }
+
+    [RelayCommand]
+    private void NewTerminalTab()
+    {
+        NavigateWithIntent(NavigationSection.Terminal, () =>
+        {
+            if (CurrentContentViewModel is TerminalViewModel terminal)
+                terminal.NewTabCommand.Execute(null);
+        });
+    }
+
+    [RelayCommand]
+    private void NewChat()
+    {
+        NavigateWithIntent(NavigationSection.Sessions, () =>
+        {
+            if (CurrentContentViewModel is SessionBrowserViewModel session)
+                session.ChatPrompt = string.Empty;
+        });
+    }
+
+    [RelayCommand]
+    private async Task CheckUpdatesAsync()
+    {
+        ShowStatus("Checking for updates...");
+        var result = await _updateCheckService.CheckLatestReleaseAsync();
+        if (result.Error is not null)
+        {
+            ShowStatus($"Update check failed: {result.Error}");
+            return;
+        }
+
+        if (!result.HasUpdate)
+        {
+            ShowStatus("Hermes Desktop is up to date.");
+            return;
+        }
+
+        AvailableUpdate = result;
+        ShowUpdateDialog = true;
+    }
+
+    [RelayCommand]
+    private void DismissUpdate()
+    {
+        if (AvailableUpdate?.LatestVersion is { } version)
+        {
+            var prefs = _connectionStore.Preferences;
+            prefs.LastDismissedRelease = version;
+            _ = _connectionStore.SavePreferencesAsync(prefs);
+        }
+        ShowUpdateDialog = false;
+    }
+
+    [RelayCommand]
+    private void OpenUpdateRelease()
+    {
+        if (AvailableUpdate?.ReleaseUrl is not { } url) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"Unable to open release page: {ex.Message}");
+        }
+    }
+
+    private void NavigateWithIntent(NavigationSection section, Action action)
+    {
+        if (SelectedSection == section)
+        {
+            action();
+            return;
+        }
+
+        _pendingNavigationAction = action;
+        SelectedSection = section;
+        if (!ShowDiscardChangesDialog)
+        {
+            _pendingNavigationAction?.Invoke();
+            _pendingNavigationAction = null;
+        }
     }
 
     public void ShowStatus(string message)

@@ -33,4 +33,13 @@ public class AppPreferences
 
     [JsonPropertyName("wikiAutosave")]
     public bool WikiAutosave { get; set; } = true;
+
+    [JsonPropertyName("automaticUpdateChecks")]
+    public bool AutomaticUpdateChecks { get; set; } = true;
+
+    [JsonPropertyName("lastAutomaticUpdateCheckAt")]
+    public DateTime? LastAutomaticUpdateCheckAt { get; set; }
+
+    [JsonPropertyName("lastDismissedRelease")]
+    public string? LastDismissedRelease { get; set; }
 }

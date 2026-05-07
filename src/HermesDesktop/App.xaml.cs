@@ -46,6 +46,9 @@ public partial class App : Application
                 services.AddSingleton<IUsageBrowserService, UsageBrowserService>();
                 services.AddSingleton<ISkillBrowserService, SkillBrowserService>();
                 services.AddSingleton<ICronBrowserService, CronBrowserService>();
+                services.AddSingleton<IKanbanBrowserService, KanbanBrowserService>();
+                services.AddSingleton<IHermesChatService, HermesChatService>();
+                services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
                 services.AddSingleton<IWikiService, WikiService>();
                 services.AddSingleton<SshConfigParser>();
 
@@ -57,6 +60,7 @@ public partial class App : Application
                 services.AddTransient<UsageBrowserViewModel>();
                 services.AddTransient<SkillBrowserViewModel>();
                 services.AddTransient<CronJobsViewModel>();
+                services.AddTransient<KanbanViewModel>();
                 services.AddTransient<WikiBrowserViewModel>();
                 services.AddSingleton<TerminalViewModel>();
 

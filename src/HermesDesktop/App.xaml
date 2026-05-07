@@ -29,6 +29,9 @@
             <DataTemplate DataType="{x:Type vm:SessionBrowserViewModel}">
                 <views:SessionBrowserView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:KanbanViewModel}">
+                <views:KanbanView/>
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:UsageBrowserViewModel}">
                 <views:UsageBrowserView/>
             </DataTemplate>

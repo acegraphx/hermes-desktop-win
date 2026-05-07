@@ -31,6 +31,9 @@ public partial class CronJobsViewModel : ObservableObject
 
     [ObservableProperty] private string _draftName = string.Empty;
     [ObservableProperty] private string _draftPrompt = string.Empty;
+    [ObservableProperty] private string _draftScript = string.Empty;
+    [ObservableProperty] private string _draftWorkdir = string.Empty;
+    [ObservableProperty] private bool _draftNoAgent;
     [ObservableProperty] private string _draftSkills = string.Empty;
     [ObservableProperty] private string _draftModel = string.Empty;
     [ObservableProperty] private string _draftProvider = string.Empty;
@@ -135,6 +138,9 @@ public partial class CronJobsViewModel : ObservableObject
     {
         Name = DraftName,
         Prompt = DraftPrompt,
+        Script = DraftScript,
+        Workdir = DraftWorkdir,
+        NoAgent = DraftNoAgent,
         SkillsText = DraftSkills,
         Model = DraftModel,
         Provider = DraftProvider,
@@ -308,6 +314,9 @@ public partial class CronJobsViewModel : ObservableObject
     {
         DraftName = string.Empty;
         DraftPrompt = string.Empty;
+        DraftScript = string.Empty;
+        DraftWorkdir = string.Empty;
+        DraftNoAgent = false;
         DraftSkills = string.Empty;
         DraftModel = string.Empty;
         DraftProvider = string.Empty;
@@ -332,6 +341,9 @@ public partial class CronJobsViewModel : ObservableObject
         var d = CronJobDraft.FromJob(job);
         DraftName = d.Name;
         DraftPrompt = d.Prompt;
+        DraftScript = d.Script;
+        DraftWorkdir = d.Workdir;
+        DraftNoAgent = d.NoAgent;
         DraftSkills = d.SkillsText;
         DraftModel = d.Model;
         DraftProvider = d.Provider;

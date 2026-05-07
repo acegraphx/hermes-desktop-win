@@ -1,3 +1,5 @@
+import json
+import pathlib
 from datetime import datetime, timezone
 
 def normalize_bool(value):
@@ -5,6 +7,7 @@ def normalize_bool(value):
         return value
     if value is None:
         return None
+
     lowered = str(value).strip().lower()
     if lowered in {"1", "true", "yes", "on"}:
         return True
@@ -22,6 +25,7 @@ def normalize_list(value):
             if normalized is not None:
                 items.append(normalized)
         return items
+
     normalized = normalize_text(value)
     return [normalized] if normalized is not None else []
 
@@ -47,9 +51,11 @@ def normalize_date(value):
         return None
     if isinstance(value, (int, float)):
         return datetime.fromtimestamp(float(value), tz=timezone.utc).isoformat()
+
     text = normalize_text(value)
     if text is None:
         return None
+
     try:
         return datetime.fromtimestamp(float(text), tz=timezone.utc).isoformat()
     except Exception:
@@ -63,6 +69,7 @@ def normalize_state(item):
     )
     if raw_state is not None:
         return raw_state.lower()
+
     if item.get("paused_at") is not None:
         return "paused"
     if normalize_bool(item.get("running")) is True:
@@ -111,7 +118,10 @@ def normalize_recurrence(item):
     if times is None and remaining is None:
         return None
 
-    return {"times": times, "remaining": remaining}
+    return {
+        "times": times,
+        "remaining": remaining,
+    }
 
 def normalize_origin(item):
     origin = item.get("origin")
@@ -129,15 +139,16 @@ def normalize_origin(item):
 
     return normalized
 
-def delivery_target(item, payload_obj):
+def delivery_target(item, payload):
     delivery = item.get("delivery")
     if isinstance(delivery, dict):
         return first_text(delivery.get("target"), delivery.get("destination"), delivery.get("mode"))
+
     return first_text(
         item.get("deliver"),
         item.get("delivery_target"),
         delivery,
-        payload_obj.get("deliver") if isinstance(payload_obj, dict) else None,
+        payload.get("deliver") if isinstance(payload, dict) else None,
     )
 
 def normalize_job(item):
@@ -149,26 +160,26 @@ def normalize_job(item):
         return None
 
     payload_data = item.get("payload")
-    payload_obj = payload_data if isinstance(payload_data, dict) else {}
+    payload = payload_data if isinstance(payload_data, dict) else {}
     prompt = first_text(
         item.get("prompt"),
         item.get("message"),
-        payload_obj.get("prompt"),
-        payload_obj.get("message"),
-        payload_obj.get("task"),
+        payload.get("prompt"),
+        payload.get("message"),
+        payload.get("task"),
     ) or ""
 
     name = first_text(
         item.get("name"),
         item.get("title"),
-        payload_obj.get("name"),
+        payload.get("name"),
         prompt.splitlines()[0] if prompt else None,
         job_id,
     ) or job_id
 
     skills = normalize_list(item.get("skills"))
     if not skills:
-        skills = normalize_list(payload_obj.get("skills"))
+        skills = normalize_list(payload.get("skills"))
 
     schedule, schedule_display = normalize_schedule(item)
     state = normalize_state(item)
@@ -180,10 +191,13 @@ def normalize_job(item):
         "id": job_id,
         "name": name,
         "prompt": prompt,
+        "script": first_text(item.get("script"), payload.get("script")),
+        "workdir": first_text(item.get("workdir"), item.get("cwd"), payload.get("workdir"), payload.get("cwd")),
+        "no_agent": normalize_bool(item.get("no_agent")) or False,
         "skills": skills,
-        "model": first_text(item.get("model"), payload_obj.get("model")),
-        "provider": first_text(item.get("provider"), item.get("billing_provider"), payload_obj.get("provider")),
-        "base_url": first_text(item.get("base_url"), payload_obj.get("base_url")),
+        "model": first_text(item.get("model"), payload.get("model")),
+        "provider": first_text(item.get("provider"), item.get("billing_provider"), payload.get("provider")),
+        "base_url": first_text(item.get("base_url"), payload.get("base_url")),
         "schedule": schedule,
         "schedule_display": schedule_display,
         "recurrence": normalize_recurrence(item),
@@ -194,7 +208,7 @@ def normalize_job(item):
         "last_run_at": normalize_date(item.get("last_run_at")),
         "last_status": first_text(item.get("last_status"), item.get("run_status")),
         "last_error": first_text(item.get("last_error"), item.get("error")),
-        "delivery_target": delivery_target(item, payload_obj),
+        "delivery_target": delivery_target(item, payload),
         "origin": normalize_origin(item),
         "last_delivery_error": first_text(item.get("last_delivery_error")),
     }
@@ -202,7 +216,10 @@ def normalize_job(item):
 try:
     jobs_path = resolved_hermes_home() / "cron" / "jobs.json"
     if not jobs_path.exists():
-        print(json.dumps({"ok": True, "jobs": []}, ensure_ascii=False))
+        print(json.dumps({
+            "ok": True,
+            "jobs": [],
+        }, ensure_ascii=False))
         sys.exit(0)
 
     raw_data = json.loads(jobs_path.read_text(encoding="utf-8"))
@@ -223,10 +240,13 @@ try:
         key=lambda item: (
             item.get("next_run_at") is None,
             item.get("next_run_at") or "",
-            (item.get("name") or "").lower(),
+            item.get("name", "").lower(),
         )
     )
 
-    print(json.dumps({"ok": True, "jobs": jobs}, ensure_ascii=False))
+    print(json.dumps({
+        "ok": True,
+        "jobs": jobs,
+    }, ensure_ascii=False))
 except Exception as exc:
     fail(f"Unable to read the remote Hermes cron jobs: {exc}")

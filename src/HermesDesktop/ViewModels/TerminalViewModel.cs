@@ -210,7 +210,9 @@ public partial class TerminalViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task NewTabAsync()
+    private Task NewTabAsync() => OpenTabWithStartupCommandAsync(null);
+
+    public async Task OpenTabWithStartupCommandAsync(string? startupCommand)
     {
         if (_mainVm.ActiveConnection == null)
         {
@@ -224,8 +226,22 @@ public partial class TerminalViewModel : ObservableObject
             var session = await _sshTransport.OpenShellAsync(
                 _mainVm.ActiveConnection, 120, 40);
 
+            if (!string.IsNullOrWhiteSpace(startupCommand))
+            {
+                try
+                {
+                    var command = BuildStartupShellCommand(_mainVm.ActiveConnection, startupCommand) + "\n";
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(command);
+                    await session.Stream.WriteAsync(bytes, 0, bytes.Length);
+                    await session.Stream.FlushAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to run startup command in terminal");
+                }
+            }
             // Profile-aware: if a non-default Hermes profile is selected, bootstrap HERMES_HOME
-            if (!_mainVm.ActiveConnection.UsesDefaultHermesProfile)
+            else if (!_mainVm.ActiveConnection.UsesDefaultHermesProfile)
             {
                 try
                 {
@@ -243,6 +259,8 @@ public partial class TerminalViewModel : ObservableObject
             var title = !_mainVm.ActiveConnection.UsesDefaultHermesProfile
                 ? $"{_mainVm.ActiveConnection.Label} ({_mainVm.ActiveConnection.ResolvedHermesProfileName})"
                 : _mainVm.ActiveConnection.Label ?? $"Terminal {Tabs.Count + 1}";
+            if (!string.IsNullOrWhiteSpace(startupCommand))
+                title = $"Hermes resume - {_mainVm.ActiveConnection.Label}";
 
             var tab = new TerminalTabViewModel(session, title,
                 _mainVm.ActiveConnection,
@@ -256,6 +274,17 @@ public partial class TerminalViewModel : ObservableObject
             _logger.LogError(ex, "Failed to open terminal tab");
         }
     }
+
+    private static string BuildStartupShellCommand(ConnectionProfile profile, string startupCommand)
+    {
+        var command = $"exec \"${{SHELL:-/bin/bash}}\" -lc {ShellQuote(startupCommand)}";
+        if (profile.UsesDefaultHermesProfile) return command;
+        var homeExpr = $"$HOME/.hermes/profiles/{profile.ResolvedHermesProfileName.Replace("\"", "\\\"")}";
+        return $"export HERMES_HOME=\"{homeExpr}\"; {command}";
+    }
+
+    private static string ShellQuote(string value) =>
+        "'" + value.Replace("'", "'\\''") + "'";
 
     [RelayCommand]
     private void CloseTab(TerminalTabViewModel tab)

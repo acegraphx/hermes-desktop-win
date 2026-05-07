@@ -31,6 +31,9 @@ public class CronJob
     [JsonPropertyName("delivery_target")] public string? DeliveryTarget { get; set; }
     [JsonPropertyName("origin")] public CronJobOrigin? Origin { get; set; }
     [JsonPropertyName("last_delivery_error")] public string? LastDeliveryError { get; set; }
+    [JsonPropertyName("script")] public string? Script { get; set; }
+    [JsonPropertyName("workdir")] public string? Workdir { get; set; }
+    [JsonPropertyName("no_agent")] public bool NoAgent { get; set; }
 
     [JsonIgnore]
     public string ResolvedName => string.IsNullOrWhiteSpace(Name) ? Id : Name.Trim();
@@ -50,6 +53,7 @@ public class CronJob
     {
         get
         {
+            if (NoAgent) return $"Script-only watchdog: {TrimmedScript ?? "No script configured"}";
             if (TrimmedPrompt is null) return "No saved prompt payload";
             var compact = TrimmedPrompt.Replace("\n", " ").Replace("\r", " ");
             return compact.Length > 140 ? compact[..140] + "…" : compact;
@@ -103,6 +107,29 @@ public class CronJob
         }
     }
 
+    [JsonIgnore]
+    public string? TrimmedScript
+    {
+        get
+        {
+            var t = Script?.Trim();
+            return string.IsNullOrEmpty(t) ? null : t;
+        }
+    }
+
+    [JsonIgnore]
+    public string? TrimmedWorkdir
+    {
+        get
+        {
+            var t = Workdir?.Trim();
+            return string.IsNullOrEmpty(t) ? null : t;
+        }
+    }
+
+    [JsonIgnore]
+    public string ExecutionModeTitle => NoAgent ? "Script Only" : "Agent";
+
     public bool MatchesSearch(string query)
     {
         if (string.IsNullOrWhiteSpace(query)) return true;
@@ -112,7 +139,8 @@ public class CronJob
             Id, ResolvedName, Prompt ?? string.Empty,
             ResolvedScheduleDisplay, RawScheduleText ?? string.Empty,
             Model ?? string.Empty, Provider ?? string.Empty,
-            BaseUrl ?? string.Empty, DeliveryTarget ?? string.Empty
+            BaseUrl ?? string.Empty, DeliveryTarget ?? string.Empty,
+            Script ?? string.Empty, Workdir ?? string.Empty, ExecutionModeTitle
         }.Concat(Skills);
 
         return haystacks.Any(s => s?.Contains(q, StringComparison.OrdinalIgnoreCase) == true);
@@ -349,6 +377,9 @@ public class CronJobDraft
 {
     public string Name { get; set; } = string.Empty;
     public string Prompt { get; set; } = string.Empty;
+    public string Script { get; set; } = string.Empty;
+    public string Workdir { get; set; } = string.Empty;
+    public bool NoAgent { get; set; }
     public string SkillsText { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;
     public string Provider { get; set; } = string.Empty;
@@ -365,6 +396,9 @@ public class CronJobDraft
         {
             Name = job.ResolvedName,
             Prompt = job.TrimmedPrompt ?? job.Prompt ?? string.Empty,
+            Script = job.TrimmedScript ?? string.Empty,
+            Workdir = job.TrimmedWorkdir ?? string.Empty,
+            NoAgent = job.NoAgent,
             SkillsText = string.Join(", ", job.Skills),
             Model = job.Model ?? string.Empty,
             Provider = job.Provider ?? string.Empty,
@@ -378,6 +412,8 @@ public class CronJobDraft
 
     public string NormalizedName => (Name ?? string.Empty).Trim();
     public string NormalizedPrompt => (Prompt ?? string.Empty).Trim();
+    public string? NormalizedScript => NormalizeOpt(Script);
+    public string? NormalizedWorkdir => NormalizeOpt(Workdir);
 
     public List<string> NormalizedSkills =>
         (SkillsText ?? string.Empty)
@@ -404,7 +440,11 @@ public class CronJobDraft
         get
         {
             if (string.IsNullOrEmpty(NormalizedName)) return "A cron job title is required.";
-            if (string.IsNullOrEmpty(NormalizedPrompt)) return "A prompt is required.";
+            if (NoAgent)
+            {
+                if (NormalizedScript is null) return "A script path is required for script-only jobs.";
+            }
+            else if (string.IsNullOrEmpty(NormalizedPrompt)) return "A prompt is required.";
             if (string.IsNullOrWhiteSpace(Schedule.Expression)) return "A valid schedule is required.";
             if (NormalizedDeliveryTarget is null) return "A delivery target is required.";
             return null;

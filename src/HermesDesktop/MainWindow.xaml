@@ -13,6 +13,11 @@
 
     <Window.InputBindings>
         <KeyBinding Key="S" Modifiers="Control" Command="{Binding SaveFileShortcutCommand}"/>
+        <KeyBinding Key="R" Modifiers="Control" Command="{Binding RefreshCurrentSectionCommand}"/>
+        <KeyBinding Key="F" Modifiers="Control" Command="{Binding FindCurrentSectionCommand}"/>
+        <KeyBinding Key="T" Modifiers="Control+Shift" Command="{Binding NewTerminalTabCommand}"/>
+        <KeyBinding Key="N" Modifiers="Control+Shift" Command="{Binding NewChatCommand}"/>
+        <KeyBinding Key="U" Modifiers="Control+Shift" Command="{Binding CheckUpdatesCommand}"/>
     </Window.InputBindings>
 
     <Grid x:Name="RootGrid">
@@ -240,6 +245,34 @@
                                 Padding="16,6" Margin="0,0,8,0"/>
                         <Button Content="Discard" Command="{Binding DiscardChangesAndNavigateCommand}"
                                 Padding="16,6" Style="{StaticResource DangerButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.Row="0" Grid.RowSpan="2" Grid.ColumnSpan="3"
+                Background="{DynamicResource OverlayBackground}"
+                Visibility="{Binding ShowUpdateDialog, Converter={StaticResource BoolToVisibility}}"
+                Panel.ZIndex="101">
+            <Border Background="{DynamicResource DialogBackground}" CornerRadius="8" Padding="24"
+                    MaxWidth="520" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="Update available" FontSize="16" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                    <TextBlock Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,12">
+                        <Run Text="Version "/>
+                        <Run Text="{Binding AvailableUpdate.LatestVersion}"/>
+                        <Run Text=" is available for Hermes Desktop for Windows."/>
+                    </TextBlock>
+                    <TextBlock Text="{Binding AvailableUpdate.Notes}" FontSize="12"
+                               Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap"
+                               MaxHeight="180" Margin="0,0,0,16"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Dismiss" Command="{Binding DismissUpdateCommand}"
+                                Padding="16,6" Margin="0,0,8,0"/>
+                        <Button Content="Open Release" Command="{Binding OpenUpdateReleaseCommand}"
+                                Padding="16,6" Style="{StaticResource AccentButton}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

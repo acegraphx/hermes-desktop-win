@@ -1,5 +1,10 @@
+import fcntl
+import json
+import os
+import pathlib
 import re
 import secrets
+import tempfile
 from datetime import datetime, timezone
 
 def normalize_list(value):
@@ -17,32 +22,76 @@ def normalize_list(value):
 
 def load_container(path):
     if not path.exists():
-        return [], "list", None
+        return [], "list", None, None
 
     raw = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(raw, list):
-        return raw, "list", None
+        return raw, "list", None, None
 
     if isinstance(raw, dict):
         for key in ("jobs", "items", "cron_jobs"):
             jobs = raw.get(key)
             if isinstance(jobs, list):
-                return jobs, "dict", key
+                return jobs, "dict", key, raw
         fail(f"Unsupported cron metadata wrapper in {path}.")
 
     fail(f"Unsupported cron metadata format in {path}.")
 
-def save_container(path, jobs, container_kind, container_key):
+def save_container(path, jobs, container_kind, container_key, container_payload):
     if container_kind == "list":
         payload_to_write = jobs
     else:
-        payload_to_write = {container_key or "jobs": jobs}
+        payload_to_write = dict(container_payload) if isinstance(container_payload, dict) else {}
+        # Preserve any scheduler metadata Hermes keeps next to the jobs list.
+        payload_to_write[container_key or "jobs"] = jobs
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(payload_to_write, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8"
-    )
+    content_bytes = (
+        json.dumps(payload_to_write, ensure_ascii=False, indent=2) + "\n"
+    ).encode("utf-8")
+    temp_name = None
+    directory_fd = None
+
+    try:
+        fd, temp_name = tempfile.mkstemp(
+            dir=str(path.parent),
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        )
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(content_bytes)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        if path.exists():
+            os.chmod(temp_name, path.stat().st_mode)
+
+        os.replace(temp_name, path)
+        directory_fd = os.open(path.parent, os.O_RDONLY)
+        os.fsync(directory_fd)
+    finally:
+        if directory_fd is not None:
+            os.close(directory_fd)
+        if temp_name and os.path.exists(temp_name):
+            os.unlink(temp_name)
+
+def with_jobs_lock(path, callback):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(path.name + ".lock")
+    lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        os.chmod(str(lock_path), 0o600)
+    except OSError:
+        pass
+
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        return callback()
+    finally:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        finally:
+            os.close(lock_fd)
 
 def iso_now():
     return datetime.now(timezone.utc).isoformat()
@@ -57,7 +106,11 @@ def normalize_origin_payload(value):
         "label": normalize_text(value.get("label")) or normalize_text(value.get("name")) or normalize_text(value.get("chat_name")),
     }
 
-    normalized = {k: v for k, v in normalized.items() if v is not None}
+    normalized = {
+        key: item
+        for key, item in normalized.items()
+        if item is not None
+    }
     return normalized or None
 
 def detect_schedule(value):
@@ -84,37 +137,41 @@ def detect_schedule(value):
 
     return None, None
 
-try:
-    action = normalize_text(payload.get("action"))
-    if action not in {"create", "update"}:
-        fail("Unsupported cron mutation action.")
+action = normalize_text(payload.get("action"))
+if action not in {"create", "update"}:
+    fail("Unsupported cron mutation action.")
 
-    draft = payload.get("draft")
-    if not isinstance(draft, dict):
-        fail("A cron draft payload is required.")
+draft = payload.get("draft")
+if not isinstance(draft, dict):
+    fail("A cron draft payload is required.")
 
-    name = normalize_text(draft.get("name"))
-    prompt_text = normalize_text(draft.get("prompt"))
-    schedule_expr = normalize_text(draft.get("schedule"))
-    skills = normalize_list(draft.get("skills"))
-    model = normalize_text(draft.get("model"))
-    provider = normalize_text(draft.get("provider"))
-    base_url = normalize_text(draft.get("base_url"))
-    delivery = normalize_text(draft.get("deliver"))
-    timezone_name = normalize_text(draft.get("timezone"))
-    schedule_kind, repeat_times = detect_schedule(schedule_expr)
+name = normalize_text(draft.get("name"))
+prompt_text = normalize_text(draft.get("prompt"))
+script_path = normalize_text(draft.get("script"))
+workdir = normalize_text(draft.get("workdir"))
+no_agent = bool(draft.get("no_agent"))
+schedule_expr = normalize_text(draft.get("schedule"))
+skills = normalize_list(draft.get("skills"))
+model = normalize_text(draft.get("model"))
+provider = normalize_text(draft.get("provider"))
+base_url = normalize_text(draft.get("base_url"))
+delivery = normalize_text(draft.get("deliver"))
+timezone_name = normalize_text(draft.get("timezone"))
+schedule_kind, repeat_times = detect_schedule(schedule_expr)
 
-    if name is None:
-        fail("The cron job title is required.")
-    if prompt_text is None:
-        fail("The cron job prompt is required.")
-    if schedule_expr is None:
-        fail("The cron job schedule is required.")
-    if delivery is None:
-        fail("A delivery target is required.")
+if name is None:
+    fail("The cron job title is required.")
+if no_agent and script_path is None:
+    fail("The cron job script is required for script-only jobs.")
+if not no_agent and prompt_text is None:
+    fail("The cron job prompt is required.")
+if schedule_expr is None:
+    fail("The cron job schedule is required.")
+if delivery is None:
+    fail("A delivery target is required.")
 
-    jobs_path = resolved_hermes_home() / "cron" / "jobs.json"
-    jobs, container_kind, container_key = load_container(jobs_path)
+def mutate_jobs():
+    jobs, container_kind, container_key, container_payload = load_container(jobs_path)
 
     if action == "create":
         existing_ids = {
@@ -129,7 +186,10 @@ try:
         job = {
             "id": job_id,
             "name": name,
-            "prompt": prompt_text,
+            "prompt": prompt_text or "",
+            "script": script_path,
+            "workdir": workdir,
+            "no_agent": no_agent,
             "skills": skills,
             "model": model,
             "provider": provider,
@@ -141,7 +201,10 @@ try:
                 "display": schedule_expr,
             },
             "schedule_display": schedule_expr,
-            "repeat": {"times": repeat_times, "completed": 0},
+            "repeat": {
+                "times": repeat_times,
+                "completed": 0,
+            },
             "enabled": True,
             "state": "scheduled",
             "paused_at": None,
@@ -152,12 +215,14 @@ try:
             "last_status": None,
             "last_error": None,
             "deliver": delivery,
-            "origin": {"kind": "desktop", "label": "Hermes Desktop"},
+            "origin": {
+                "kind": "desktop",
+                "label": "Hermes Desktop",
+            },
         }
         jobs.append(job)
-        save_container(jobs_path, jobs, container_kind, container_key)
-        print(json.dumps({"ok": True, "job_id": job_id}, ensure_ascii=False))
-        sys.exit(0)
+        save_container(jobs_path, jobs, container_kind, container_key, container_payload)
+        return job_id
 
     job_id = normalize_text(payload.get("job_id"))
     if job_id is None:
@@ -180,7 +245,10 @@ try:
     schedule_changed = old_expr != schedule_expr
 
     target["name"] = name
-    target["prompt"] = prompt_text
+    target["prompt"] = prompt_text or ""
+    target["script"] = script_path
+    target["workdir"] = workdir
+    target["no_agent"] = no_agent
     target["skills"] = skills
     target.pop("skill", None)
     target["model"] = model
@@ -221,7 +289,12 @@ try:
         if target.get("enabled") is not False:
             target["enabled"] = True
 
-    save_container(jobs_path, jobs, container_kind, container_key)
-    print(json.dumps({"ok": True, "job_id": job_id}, ensure_ascii=False))
-except Exception as exc:
-    fail(f"Unable to mutate cron job: {exc}")
+    save_container(jobs_path, jobs, container_kind, container_key, container_payload)
+    return job_id
+
+jobs_path = resolved_hermes_home() / "cron" / "jobs.json"
+job_id = with_jobs_lock(jobs_path, mutate_jobs)
+print(json.dumps({
+    "ok": True,
+    "job_id": job_id,
+}, ensure_ascii=False))

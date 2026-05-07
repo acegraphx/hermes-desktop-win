@@ -10,6 +10,7 @@ namespace HermesDesktop.Services;
 public class RemotePythonScriptExecutor : IRemoteScriptExecutor
 {
     private readonly ISshTransport _ssh;
+    private readonly SftpConnectionPool _sftpPool;
     private readonly ILogger<RemotePythonScriptExecutor> _logger;
     private readonly Dictionary<string, string> _scriptCache = new();
     private readonly JsonSerializerOptions _jsonOptions = new()
@@ -17,9 +18,13 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
         PropertyNameCaseInsensitive = true
     };
 
-    public RemotePythonScriptExecutor(ISshTransport ssh, ILogger<RemotePythonScriptExecutor> logger)
+    public RemotePythonScriptExecutor(
+        ISshTransport ssh,
+        SftpConnectionPool sftpPool,
+        ILogger<RemotePythonScriptExecutor> logger)
     {
         _ssh = ssh;
+        _sftpPool = sftpPool;
         _logger = logger;
     }
 
@@ -48,6 +53,13 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
 
         payload.TryAdd("hermes_home", profile.RemoteHermesHomePath);
         payload.TryAdd("profile_name", profile.ResolvedHermesProfileName);
+        var timeout = TimeSpan.FromSeconds(60);
+        if (payload.TryGetValue("executor_timeout_seconds", out var timeoutValue) &&
+            int.TryParse(Convert.ToString(timeoutValue), out var timeoutSeconds) &&
+            timeoutSeconds > 0)
+        {
+            timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        }
 
         var paramsJson = JsonSerializer.Serialize(payload);
         var payloadBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(paramsJson));
@@ -55,15 +67,15 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
         var script = BuildScript(body, payloadBase64);
 
         var scriptBytes = Encoding.UTF8.GetBytes(script);
-        var base64Script = Convert.ToBase64String(scriptBytes);
-
-        var command = $"printf '%s' '{base64Script}' | base64 -d | python3 -";
+        var command = scriptBytes.Length > 48_000
+            ? await UploadScriptAndBuildCommandAsync(profile, scriptBytes, ct)
+            : BuildInlineCommand(scriptBytes);
 
         _logger.LogDebug("Executing remote script: {Script} (hermes_home={Home})",
             scriptName, profile.RemoteHermesHomePath);
 
         var result = await _ssh.ExecuteCommandAsync(
-            profile, command, ct, TimeSpan.FromSeconds(60));
+            profile, command, ct, timeout);
 
         if (result.ExitCode != 0)
         {
@@ -74,6 +86,25 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
 
         return result.StandardOutput;
     }
+
+    private static string BuildInlineCommand(byte[] scriptBytes)
+    {
+        var base64Script = Convert.ToBase64String(scriptBytes);
+        return $"printf '%s' '{base64Script}' | base64 -d | python3 -";
+    }
+
+    private async Task<string> UploadScriptAndBuildCommandAsync(ConnectionProfile profile, byte[] scriptBytes, CancellationToken ct)
+    {
+        var remotePath = $"/tmp/hermes-desktop-{Guid.NewGuid():N}.py";
+        var sftp = await _sftpPool.GetOrCreateAsync(profile, ct);
+        await using var stream = new MemoryStream(scriptBytes);
+        await Task.Run(() => sftp.UploadFile(stream, remotePath, canOverride: true), ct);
+        var quoted = QuoteShell(remotePath);
+        return $"python3 {quoted}; status=$?; rm -f {quoted}; exit $status";
+    }
+
+    private static string QuoteShell(string value) =>
+        "'" + value.Replace("'", "'\\''") + "'";
 
     private static string BuildScript(string body, string payloadBase64)
     {

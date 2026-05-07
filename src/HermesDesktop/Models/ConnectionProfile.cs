@@ -96,6 +96,9 @@ public class ConnectionProfile
             : "~/.hermes";
 
     [JsonIgnore]
+    public string RemoteKanbanHomePath => "~/.hermes";
+
+    [JsonIgnore]
     public string RemoteSkillsPath => $"{RemoteHermesHomePath}/skills";
 
     [JsonIgnore]

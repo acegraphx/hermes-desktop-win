@@ -126,6 +126,10 @@
                         <TextBlock Text="{Binding ResolvedScheduleDisplay}" FontSize="13"
                                    Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" Margin="0,4,0,12"/>
 
+                        <TextBlock Text="Execution" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBlock Text="{Binding ExecutionModeTitle}" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimary}" Margin="0,4,0,12"/>
+
                         <!-- Prompt -->
                         <TextBlock Text="Prompt" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
                         <Border Background="{DynamicResource PanelBackground}" CornerRadius="4"
@@ -135,6 +139,18 @@
                                        Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"
                                        FontFamily="Consolas"/>
                         </Border>
+
+                        <TextBlock Text="Script" FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                                   Visibility="{Binding TrimmedScript, Converter={StaticResource NullToVisibility}}"/>
+                        <TextBlock Text="{Binding TrimmedScript}" FontSize="13" FontFamily="Consolas"
+                                   Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                   Visibility="{Binding TrimmedScript, Converter={StaticResource NullToVisibility}}"/>
+
+                        <TextBlock Text="Working directory" FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                                   Visibility="{Binding TrimmedWorkdir, Converter={StaticResource NullToVisibility}}"/>
+                        <TextBlock Text="{Binding TrimmedWorkdir}" FontSize="13" FontFamily="Consolas"
+                                   Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                   Visibility="{Binding TrimmedWorkdir, Converter={StaticResource NullToVisibility}}"/>
 
                         <!-- Skills -->
                         <TextBlock Text="Skills" FontSize="11" Foreground="{DynamicResource TextTertiary}"
@@ -238,10 +254,21 @@
                         <TextBox Text="{Binding DraftName, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
                                  Margin="0,4,0,12"/>
 
+                        <CheckBox Content="Script-only job" IsChecked="{Binding DraftNoAgent}"
+                                  Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
+
                         <TextBlock Text="Prompt" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
                         <TextBox Text="{Binding DraftPrompt, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
                                  AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
                                  VerticalScrollBarVisibility="Auto" Margin="0,4,0,12"/>
+
+                        <TextBlock Text="Script path" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftScript, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
+                                 Margin="0,4,0,12"/>
+
+                        <TextBlock Text="Working directory (optional)" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
+                        <TextBox Text="{Binding DraftWorkdir, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"
+                                 Margin="0,4,0,12"/>
 
                         <TextBlock Text="Skills (comma-separated)" FontSize="11" Foreground="{DynamicResource TextTertiary}"/>
                         <TextBox Text="{Binding DraftSkills, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"

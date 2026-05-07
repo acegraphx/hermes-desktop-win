@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1AC91AEE-1A8
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HermesDesktop", "src\HermesDesktop\HermesDesktop.csproj", "{AEF3F49D-1C0F-470D-8F9C-673D64A28158}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0BBFCC45-971C-41A5-8CDC-EA37421AD1F5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HermesDesktop.Tests", "tests\HermesDesktop.Tests\HermesDesktop.Tests.csproj", "{07A17581-DBFA-4AB0-9663-9BC2560AF28D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +24,13 @@ Global
 		{AEF3F49D-1C0F-470D-8F9C-673D64A28158}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AEF3F49D-1C0F-470D-8F9C-673D64A28158}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AEF3F49D-1C0F-470D-8F9C-673D64A28158}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07A17581-DBFA-4AB0-9663-9BC2560AF28D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07A17581-DBFA-4AB0-9663-9BC2560AF28D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07A17581-DBFA-4AB0-9663-9BC2560AF28D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07A17581-DBFA-4AB0-9663-9BC2560AF28D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{AEF3F49D-1C0F-470D-8F9C-673D64A28158} = {1AC91AEE-1A85-490A-86A8-6854691422C9}
+		{07A17581-DBFA-4AB0-9663-9BC2560AF28D} = {0BBFCC45-971C-41A5-8CDC-EA37421AD1F5}
 	EndGlobalSection
 EndGlobal

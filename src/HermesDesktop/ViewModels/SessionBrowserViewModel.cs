@@ -12,6 +12,8 @@ public partial class SessionBrowserViewModel : ObservableObject
 {
     private readonly IRemoteScriptExecutor _executor;
     private readonly ISessionBrowserService _sessionService;
+    private readonly IHermesChatService _chatService;
+    private readonly TerminalViewModel _terminalViewModel;
     private readonly MainViewModel _mainVm;
     private readonly ILogger<SessionBrowserViewModel> _logger;
 
@@ -42,6 +44,18 @@ public partial class SessionBrowserViewModel : ObservableObject
     [ObservableProperty]
     private List<TranscriptMessage>? _transcriptMessages;
 
+    [ObservableProperty]
+    private string _chatPrompt = string.Empty;
+
+    [ObservableProperty]
+    private bool _autoApproveCommands;
+
+    [ObservableProperty]
+    private PendingSessionTurn? _pendingTurn;
+
+    [ObservableProperty]
+    private string? _chatError;
+
     private const int PageSize = 50;
 
     public bool HasMore => CurrentOffset + PageSize < TotalCount;
@@ -49,11 +63,15 @@ public partial class SessionBrowserViewModel : ObservableObject
     public SessionBrowserViewModel(
         IRemoteScriptExecutor executor,
         ISessionBrowserService sessionService,
+        IHermesChatService chatService,
+        TerminalViewModel terminalViewModel,
         MainViewModel mainVm,
         ILogger<SessionBrowserViewModel> logger)
     {
         _executor = executor;
         _sessionService = sessionService;
+        _chatService = chatService;
+        _terminalViewModel = terminalViewModel;
         _mainVm = mainVm;
         _logger = logger;
 
@@ -195,6 +213,63 @@ public partial class SessionBrowserViewModel : ObservableObject
     {
         CurrentOffset += PageSize;
         await LoadSessionsAsync();
+    }
+
+    [RelayCommand]
+    private async Task SendChatAsync()
+    {
+        if (_mainVm.ActiveConnection is null) return;
+        var prompt = (ChatPrompt ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(prompt)) return;
+
+        var sessionId = SelectedSession?.Id;
+        PendingTurn = new PendingSessionTurn
+        {
+            SessionId = sessionId,
+            Prompt = prompt,
+            AutoApproveCommands = AutoApproveCommands
+        };
+        ChatError = null;
+        try
+        {
+            await _chatService.SendMessageAsync(_mainVm.ActiveConnection, prompt, sessionId, AutoApproveCommands);
+            ChatPrompt = string.Empty;
+            await LoadSessionsAsync();
+            if (sessionId is not null)
+            {
+                var refreshed = Sessions.FirstOrDefault(s => s.Id == sessionId);
+                if (refreshed is not null)
+                {
+                    SelectedSession = refreshed;
+                    await LoadDetailAsync(refreshed);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ChatError = ex.Message;
+        }
+        finally
+        {
+            PendingTurn = null;
+        }
+    }
+
+    [RelayCommand]
+    private async Task StartNewChatAsync()
+    {
+        SelectedSession = null;
+        TranscriptMessages = null;
+        await SendChatAsync();
+    }
+
+    [RelayCommand]
+    private async Task ResumeInTerminalAsync()
+    {
+        if (_mainVm.ActiveConnection is null || SelectedSession is null) return;
+        var invocation = new HermesSessionResumeInvocation(SelectedSession.Id, _mainVm.ActiveConnection);
+        _mainVm.SelectedSection = NavigationSection.Terminal;
+        await _terminalViewModel.OpenTabWithStartupCommandAsync(invocation.CommandLine);
     }
 }
 

@@ -67,6 +67,9 @@ public class CronBrowserService : ICronBrowserService
             {
                 ["name"] = draft.NormalizedName,
                 ["prompt"] = draft.NormalizedPrompt,
+                ["script"] = draft.NormalizedScript,
+                ["workdir"] = draft.NormalizedWorkdir,
+                ["no_agent"] = draft.NoAgent,
                 ["schedule"] = draft.Schedule.Expression ?? string.Empty,
                 ["skills"] = draft.NormalizedSkills,
                 ["model"] = draft.NormalizedModel,
