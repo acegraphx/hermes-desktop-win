@@ -1,8 +1,8 @@
-using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using HermesDesktop.Helpers;
 using Microsoft.Web.WebView2.Core;
 
 namespace HermesDesktop.Controls;
@@ -51,7 +51,7 @@ public partial class WikiEditorControl : UserControl
         {
             await EditorWebView.EnsureCoreWebView2Async();
 
-            var assetsPath = FindAssetsPath("Wiki");
+            var assetsPath = AppAssets.ResolveAssetFolder("Wiki", "editor.html");
             if (assetsPath != null)
             {
                 EditorWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -155,18 +155,4 @@ public partial class WikiEditorControl : UserControl
         _ = c.EditorWebView.CoreWebView2.ExecuteScriptAsync($"window.editorSetReadOnly({arg})");
     }
 
-    private static string? FindAssetsPath(string subfolder)
-    {
-        var dir = AppDomain.CurrentDomain.BaseDirectory;
-        for (int i = 0; i < 6; i++)
-        {
-            var candidate = Path.Combine(dir, "Assets", subfolder);
-            if (Directory.Exists(candidate))
-                return candidate;
-            var parent = Directory.GetParent(dir);
-            if (parent == null) break;
-            dir = parent.FullName;
-        }
-        return null;
-    }
 }

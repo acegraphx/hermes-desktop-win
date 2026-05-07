@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using HermesDesktop.Helpers;
 using HermesDesktop.Models;
 using HermesDesktop.Services;
 using Microsoft.Web.WebView2.Core;
@@ -72,7 +73,7 @@ public partial class WikiPreviewControl : UserControl
         {
             await PreviewWebView.EnsureCoreWebView2Async();
 
-            var assetsPath = FindAssetsPath("Wiki");
+            var assetsPath = AppAssets.ResolveAssetFolder("Wiki", "preview.html");
             if (assetsPath != null)
             {
                 PreviewWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -192,18 +193,4 @@ public partial class WikiPreviewControl : UserControl
             $"renderMarkdown('{base64}', {dirJson}, {isDark})");
     }
 
-    private static string? FindAssetsPath(string subfolder)
-    {
-        var dir = AppDomain.CurrentDomain.BaseDirectory;
-        for (int i = 0; i < 6; i++)
-        {
-            var candidate = Path.Combine(dir, "Assets", subfolder);
-            if (Directory.Exists(candidate))
-                return candidate;
-            var parent = Directory.GetParent(dir);
-            if (parent == null) break;
-            dir = parent.FullName;
-        }
-        return null;
-    }
 }

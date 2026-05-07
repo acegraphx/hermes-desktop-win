@@ -1,7 +1,7 @@
-using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using HermesDesktop.Helpers;
 
 namespace HermesDesktop.Controls;
 
@@ -33,7 +33,7 @@ public partial class MarkdownControl : UserControl
         {
             await MarkdownWebView.EnsureCoreWebView2Async();
 
-            var assetsPath = FindAssetsPath("Markdown");
+            var assetsPath = AppAssets.ResolveAssetFolder("Markdown", "markdown.html");
             if (assetsPath != null)
             {
                 MarkdownWebView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -79,18 +79,4 @@ public partial class MarkdownControl : UserControl
             $"renderMarkdown('{base64}', {isDark})");
     }
 
-    private static string? FindAssetsPath(string subfolder)
-    {
-        var dir = AppDomain.CurrentDomain.BaseDirectory;
-        for (int i = 0; i < 6; i++)
-        {
-            var candidate = Path.Combine(dir, "Assets", subfolder);
-            if (Directory.Exists(candidate))
-                return candidate;
-            var parent = Directory.GetParent(dir);
-            if (parent == null) break;
-            dir = parent.FullName;
-        }
-        return null;
-    }
 }

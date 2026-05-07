@@ -46,15 +46,7 @@ public partial class TerminalControl : UserControl, IDisposable
         {
             await TerminalWebView.EnsureCoreWebView2Async();
 
-            // Map local assets folder to a virtual host
-            var assetsPath = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terminal");
-
-            // If running from source, assets might be in the project directory
-            if (!Directory.Exists(assetsPath))
-            {
-                assetsPath = FindAssetsPath();
-            }
+            var assetsPath = AppAssets.ResolveAssetFolder("Terminal", "terminal.html");
 
             if (assetsPath != null && Directory.Exists(assetsPath))
             {
@@ -453,22 +445,6 @@ public partial class TerminalControl : UserControl, IDisposable
         {
             _logger?.LogDebug(ex, "Failed to write to shell stream");
         }
-    }
-
-    private static string? FindAssetsPath()
-    {
-        // Walk up from the current directory looking for the Assets/Terminal folder
-        var dir = AppDomain.CurrentDomain.BaseDirectory;
-        for (int i = 0; i < 6; i++)
-        {
-            var candidate = Path.Combine(dir, "Assets", "Terminal");
-            if (Directory.Exists(candidate) && File.Exists(Path.Combine(candidate, "terminal.html")))
-                return candidate;
-            var parent = Directory.GetParent(dir);
-            if (parent == null) break;
-            dir = parent.FullName;
-        }
-        return null;
     }
 
     public void Dispose()

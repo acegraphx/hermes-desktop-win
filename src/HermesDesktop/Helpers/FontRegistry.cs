@@ -17,7 +17,8 @@ public static class FontRegistry
     public static event EventHandler? Changed;
 
     public static string BundledFontsFolder =>
-        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Fonts");
+        AppAssets.ResolveAssetFolder("Fonts", "CascadiaCode-Regular.ttf")
+        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Fonts");
 
     public static string UserFontsFolder
     {

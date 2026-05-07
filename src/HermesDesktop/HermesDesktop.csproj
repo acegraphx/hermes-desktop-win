@@ -19,6 +19,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Assets\Terminal\**\*">
+      <LogicalName>HermesDesktop.EmbeddedAssets.Terminal.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\Markdown\**\*">
+      <LogicalName>HermesDesktop.EmbeddedAssets.Markdown.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\Wiki\**\*">
+      <LogicalName>HermesDesktop.EmbeddedAssets.Wiki.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\Fonts\**\*">
+      <LogicalName>HermesDesktop.EmbeddedAssets.Fonts.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Resources\Icons\hermes.ico" />
     <Resource Include="Resources\Icons\hermes.ico" />
   </ItemGroup>
