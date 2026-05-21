@@ -210,6 +210,7 @@ public enum CronDeliveryPreset
 {
     Local,
     Origin,
+    All,
     Telegram,
     Discord,
     Slack,
@@ -224,6 +225,7 @@ public static class CronDeliveryPresetExtensions
     {
         CronDeliveryPreset.Local => "Local Only",
         CronDeliveryPreset.Origin => "Origin Chat",
+        CronDeliveryPreset.All => "All Connected Channels",
         CronDeliveryPreset.Telegram => "Telegram Home",
         CronDeliveryPreset.Discord => "Discord Home",
         CronDeliveryPreset.Slack => "Slack Home",
@@ -237,6 +239,7 @@ public static class CronDeliveryPresetExtensions
     {
         CronDeliveryPreset.Local => "local",
         CronDeliveryPreset.Origin => "origin",
+        CronDeliveryPreset.All => "all",
         CronDeliveryPreset.Telegram => "telegram",
         CronDeliveryPreset.Discord => "discord",
         CronDeliveryPreset.Slack => "slack",
@@ -253,6 +256,7 @@ public static class CronDeliveryPresetExtensions
         {
             "local" => (CronDeliveryPreset.Local, string.Empty),
             "origin" => (CronDeliveryPreset.Origin, string.Empty),
+            "all" => (CronDeliveryPreset.All, string.Empty),
             "telegram" => (CronDeliveryPreset.Telegram, string.Empty),
             "discord" => (CronDeliveryPreset.Discord, string.Empty),
             "slack" => (CronDeliveryPreset.Slack, string.Empty),

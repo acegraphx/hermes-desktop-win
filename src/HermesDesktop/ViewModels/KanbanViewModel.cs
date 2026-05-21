@@ -39,6 +39,7 @@ public partial class KanbanViewModel : ObservableObject
     [ObservableProperty] private string _taskTenant = string.Empty;
     [ObservableProperty] private string _taskSkills = string.Empty;
     [ObservableProperty] private string _taskParents = string.Empty;
+    [ObservableProperty] private string _taskMaxRetries = string.Empty;
     [ObservableProperty] private bool _taskStartsInTriage;
 
     [ObservableProperty] private string _boardSlug = string.Empty;
@@ -174,6 +175,7 @@ public partial class KanbanViewModel : ObservableObject
     {
         DialogError = null;
         TaskTitle = TaskBody = TaskAssignee = TaskTenant = TaskSkills = TaskParents = string.Empty;
+        TaskMaxRetries = string.Empty;
         TaskPriority = 0;
         TaskStartsInTriage = false;
         ShowTaskDialog = true;
@@ -192,6 +194,7 @@ public partial class KanbanViewModel : ObservableObject
             Tenant = TaskTenant,
             SkillsText = TaskSkills,
             ParentIdsText = TaskParents,
+            MaxRetriesText = TaskMaxRetries,
             StartsInTriage = TaskStartsInTriage
         };
         if (draft.ValidationError is { } err)
@@ -267,6 +270,9 @@ public partial class KanbanViewModel : ObservableObject
 
     [RelayCommand]
     private Task AddCommentAsync() => MutateSelectedAsync(new() { ["action"] = "comment", ["text"] = CommentText }, clear: () => CommentText = string.Empty);
+
+    [RelayCommand]
+    private Task SpecifyAsync() => MutateSelectedAsync(new() { ["action"] = "specify" });
 
     [RelayCommand]
     private Task AssignAsync() => MutateSelectedAsync(new() { ["action"] = "assign", ["assignee"] = AssignAssignee });

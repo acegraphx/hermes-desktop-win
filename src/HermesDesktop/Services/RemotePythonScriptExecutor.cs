@@ -52,7 +52,8 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
             : new Dictionary<string, object>(parameters);
 
         payload.TryAdd("hermes_home", profile.RemoteHermesHomePath);
-        payload.TryAdd("profile_name", profile.ResolvedHermesProfileName);
+        payload.TryAdd("profile_name", profile.CliHermesProfileName ?? string.Empty);
+        payload.TryAdd("custom_home_mode", profile.UsesCustomHermesHome);
         var timeout = TimeSpan.FromSeconds(60);
         if (payload.TryGetValue("executor_timeout_seconds", out var timeoutValue) &&
             int.TryParse(Convert.ToString(timeoutValue), out var timeoutSeconds) &&
@@ -70,6 +71,7 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
         var command = scriptBytes.Length > 48_000
             ? await UploadScriptAndBuildCommandAsync(profile, scriptBytes, ct)
             : BuildInlineCommand(scriptBytes);
+        command = profile.RemoteServiceCommand(command);
 
         _logger.LogDebug("Executing remote script: {Script} (hermes_home={Home})",
             scriptName, profile.RemoteHermesHomePath);
@@ -114,6 +116,7 @@ public class RemotePythonScriptExecutor : IRemoteScriptExecutor
 import json
 import os
 import pathlib
+import shutil
 import sys
 
 payload = json.loads(base64.b64decode(""{payloadBase64}"").decode(""utf-8""))
@@ -193,6 +196,35 @@ def resolved_hermes_home(request=None):
     if expanded is not None:
         return expanded
     return home / "".hermes""
+
+def hermes_search_path(request=None):
+    home = pathlib.Path.home()
+    hermes_home = resolved_hermes_home(request)
+    candidates = [
+        hermes_home / ""hermes-agent"" / ""venv"" / ""bin"",
+        home / "".local"" / ""bin"",
+        home / "".hermes"" / ""hermes-agent"" / ""venv"" / ""bin"",
+        home / "".cargo"" / ""bin"",
+        pathlib.Path(""/opt/homebrew/bin""),
+        pathlib.Path(""/usr/local/bin""),
+    ]
+    entries = []
+    seen = set()
+    for candidate in candidates:
+        entry = str(candidate)
+        if entry and entry not in seen:
+            seen.add(entry)
+            entries.append(entry)
+    env_path = os.environ.get(""PATH"", """")
+    if env_path:
+        entries.append(env_path)
+    return os.pathsep.join(entries)
+
+def find_hermes_binary(request=None):
+    candidate = shutil.which(""hermes"", path=hermes_search_path(request))
+    if candidate:
+        return candidate
+    return None
 
 def tilde(path, home=None):
     if home is None:

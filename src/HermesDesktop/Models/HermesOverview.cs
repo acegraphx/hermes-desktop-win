@@ -22,6 +22,12 @@ public class HermesOverview
     [JsonPropertyName("python_version")]
     public string? PythonVersion { get; set; }
 
+    [JsonPropertyName("hermes_cli_available")]
+    public bool HermesCliAvailable { get; set; }
+
+    [JsonPropertyName("hermes_cli_path")]
+    public string? HermesCliPath { get; set; }
+
     [JsonPropertyName("hermes_home")]
     public string? HermesHome { get; set; }
 

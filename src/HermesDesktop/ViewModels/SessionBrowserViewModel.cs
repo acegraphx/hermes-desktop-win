@@ -13,6 +13,7 @@ public partial class SessionBrowserViewModel : ObservableObject
     private readonly IRemoteScriptExecutor _executor;
     private readonly ISessionBrowserService _sessionService;
     private readonly IHermesChatService _chatService;
+    private readonly IConnectionStore _connectionStore;
     private readonly TerminalViewModel _terminalViewModel;
     private readonly MainViewModel _mainVm;
     private readonly ILogger<SessionBrowserViewModel> _logger;
@@ -56,14 +57,24 @@ public partial class SessionBrowserViewModel : ObservableObject
     [ObservableProperty]
     private string? _chatError;
 
+    [ObservableProperty]
+    private SessionDetailMode _detailMode = SessionDetailMode.Transcript;
+
     private const int PageSize = 50;
 
     public bool HasMore => CurrentOffset + PageSize < TotalCount;
+    public bool IsTranscriptMode => DetailMode == SessionDetailMode.Transcript;
+    public bool IsChatMode => DetailMode == SessionDetailMode.Chat;
+    public bool ShowNoTranscriptSelection => SelectedSession is null && IsTranscriptMode;
+    public bool IsSelectedSessionPinned => SelectedSession is not null && IsPinned(SelectedSession.Id);
+    public string PinButtonText => IsSelectedSessionPinned ? "Unpin" : "Pin";
+    public TerminalViewModel ChatTerminalViewModel => _terminalViewModel;
 
     public SessionBrowserViewModel(
         IRemoteScriptExecutor executor,
         ISessionBrowserService sessionService,
         IHermesChatService chatService,
+        IConnectionStore connectionStore,
         TerminalViewModel terminalViewModel,
         MainViewModel mainVm,
         ILogger<SessionBrowserViewModel> logger)
@@ -71,6 +82,7 @@ public partial class SessionBrowserViewModel : ObservableObject
         _executor = executor;
         _sessionService = sessionService;
         _chatService = chatService;
+        _connectionStore = connectionStore;
         _terminalViewModel = terminalViewModel;
         _mainVm = mainVm;
         _logger = logger;
@@ -86,8 +98,18 @@ public partial class SessionBrowserViewModel : ObservableObject
 
     partial void OnSelectedSessionChanged(SessionItem? value)
     {
+        OnPropertyChanged(nameof(ShowNoTranscriptSelection));
+        OnPropertyChanged(nameof(IsSelectedSessionPinned));
+        OnPropertyChanged(nameof(PinButtonText));
         if (value != null)
             _ = LoadDetailAsync(value);
+    }
+
+    partial void OnDetailModeChanged(SessionDetailMode value)
+    {
+        OnPropertyChanged(nameof(IsTranscriptMode));
+        OnPropertyChanged(nameof(IsChatMode));
+        OnPropertyChanged(nameof(ShowNoTranscriptSelection));
     }
 
     [RelayCommand]
@@ -118,7 +140,7 @@ public partial class SessionBrowserViewModel : ObservableObject
                 return;
             }
 
-            Sessions = new ObservableCollection<SessionItem>(result.Items ?? new());
+            Sessions = new ObservableCollection<SessionItem>(SortPinnedFirst(result.Items ?? new()));
             TotalCount = result.TotalCount;
             OnPropertyChanged(nameof(HasMore));
         }
@@ -209,6 +231,34 @@ public partial class SessionBrowserViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task TogglePinAsync()
+    {
+        if (_mainVm.ActiveConnection is null || SelectedSession is null) return;
+        var key = _mainVm.ActiveConnection.WorkspaceScopeFingerprint;
+        var prefs = _connectionStore.Preferences;
+        if (!prefs.PinnedSessionIdsByWorkspace.TryGetValue(key, out var pins))
+        {
+            pins = new List<string>();
+            prefs.PinnedSessionIdsByWorkspace[key] = pins;
+        }
+        if (IsPinned(SelectedSession.Id))
+        {
+            pins.RemoveAll(id => string.Equals(id, SelectedSession.Id, StringComparison.OrdinalIgnoreCase));
+            prefs.PinnedSessions.RemoveAll(p => p.WorkspaceScopeFingerprint == key &&
+                                                string.Equals(p.Id, SelectedSession.Id, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            pins.Add(SelectedSession.Id);
+            prefs.PinnedSessions.Add(CreatePinnedSnapshot(SelectedSession, key));
+        }
+        await _connectionStore.SavePreferencesAsync(prefs);
+        OnPropertyChanged(nameof(IsSelectedSessionPinned));
+        OnPropertyChanged(nameof(PinButtonText));
+        Sessions = new ObservableCollection<SessionItem>(SortPinnedFirst(Sessions));
+    }
+
+    [RelayCommand]
     private async Task LoadNextPageAsync()
     {
         CurrentOffset += PageSize;
@@ -260,7 +310,7 @@ public partial class SessionBrowserViewModel : ObservableObject
     {
         SelectedSession = null;
         TranscriptMessages = null;
-        await SendChatAsync();
+        await StartTuiChatAsync(null);
     }
 
     [RelayCommand]
@@ -269,8 +319,101 @@ public partial class SessionBrowserViewModel : ObservableObject
         if (_mainVm.ActiveConnection is null || SelectedSession is null) return;
         var invocation = new HermesSessionResumeInvocation(SelectedSession.Id, _mainVm.ActiveConnection);
         _mainVm.SelectedSection = NavigationSection.Terminal;
-        await _terminalViewModel.OpenTabWithStartupCommandAsync(invocation.CommandLine);
+        await _terminalViewModel.OpenTabWithStartupCommandAsync(invocation.StartupCommandLine);
     }
+
+    [RelayCommand]
+    public Task StartTuiChatAsync() => StartTuiChatAsync(SelectedSession?.Id);
+
+    [RelayCommand]
+    private Task ResumeInChatAsync() => StartTuiChatAsync(SelectedSession?.Id);
+
+    [RelayCommand]
+    private void ShowTranscript() => DetailMode = SessionDetailMode.Transcript;
+
+    [RelayCommand]
+    private void ShowChat() => DetailMode = SessionDetailMode.Chat;
+
+    public async Task StartTuiChatAsync(string? sessionId)
+    {
+        if (_mainVm.ActiveConnection is null) return;
+        var invocation = new HermesTuiInvocation(sessionId, _mainVm.ActiveConnection);
+        DetailMode = SessionDetailMode.Chat;
+        await _terminalViewModel.OpenTabWithStartupCommandAsync(
+            invocation.StartupCommandLine,
+            null,
+            sessionId is null ? "New Chat" : $"Chat {ShortSessionId(sessionId)}");
+    }
+
+    private static string ShortSessionId(string sessionId) =>
+        sessionId.Length <= 10 ? sessionId : sessionId[..10];
+
+    private bool IsPinned(string sessionId)
+    {
+        if (_mainVm.ActiveConnection is null) return false;
+        var key = _mainVm.ActiveConnection.WorkspaceScopeFingerprint;
+        return _connectionStore.Preferences.PinnedSessions.Any(p =>
+                   p.WorkspaceScopeFingerprint == key &&
+                   string.Equals(p.Id, sessionId, StringComparison.OrdinalIgnoreCase)) ||
+               (_connectionStore.Preferences.PinnedSessionIdsByWorkspace.TryGetValue(key, out var pins) &&
+                pins.Contains(sessionId, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private IEnumerable<SessionItem> SortPinnedFirst(IEnumerable<SessionItem> sessions)
+    {
+        var items = sessions.ToList();
+        var key = _mainVm.ActiveConnection?.WorkspaceScopeFingerprint;
+        if (!string.IsNullOrWhiteSpace(key) && string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            foreach (var pinned in _connectionStore.Preferences.PinnedSessions
+                         .Where(p => p.WorkspaceScopeFingerprint == key)
+                         .OrderByDescending(p => p.CreatedAt))
+            {
+                if (items.All(s => !string.Equals(s.Id, pinned.Id, StringComparison.OrdinalIgnoreCase)))
+                    items.Add(ToSessionItem(pinned));
+            }
+        }
+
+        foreach (var item in items)
+            item.IsPinned = IsPinned(item.Id);
+        return items.OrderByDescending(s => s.IsPinned).ThenByDescending(s => s.LastActive?.ToString());
+    }
+
+    private static PinnedSessionSnapshot CreatePinnedSnapshot(SessionItem session, string workspaceScopeFingerprint)
+    {
+        var now = DateTime.UtcNow;
+        return new PinnedSessionSnapshot
+        {
+            Id = session.Id,
+            WorkspaceScopeFingerprint = workspaceScopeFingerprint,
+            Title = session.Title,
+            Model = session.Model,
+            StartedAt = session.StartedAt,
+            LastActive = session.LastActive,
+            MessageCount = session.MessageCount,
+            Preview = session.Preview,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+    }
+
+    private static SessionItem ToSessionItem(PinnedSessionSnapshot snapshot) => new()
+    {
+        Id = snapshot.Id,
+        Title = snapshot.Title,
+        Model = snapshot.Model,
+        StartedAt = snapshot.StartedAt,
+        LastActive = snapshot.LastActive,
+        MessageCount = snapshot.MessageCount,
+        Preview = snapshot.Preview,
+        IsPinned = true
+    };
+}
+
+public enum SessionDetailMode
+{
+    Transcript,
+    Chat
 }
 
 public class SessionItem
@@ -297,6 +440,9 @@ public class SessionItem
     public string? Preview { get; set; }
 
     public string DisplayTitle => Title ?? Id;
+
+    [JsonIgnore]
+    public bool IsPinned { get; set; }
 }
 
 public class TranscriptMessage

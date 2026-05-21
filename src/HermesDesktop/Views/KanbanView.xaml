@@ -112,6 +112,7 @@
 
                 <WrapPanel Margin="0,0,0,12">
                     <Button Content="Block" Padding="10,4" Margin="0,0,6,6" Command="{Binding BlockCommand}"/>
+                    <Button Content="Specify" Padding="10,4" Margin="0,0,6,6" Command="{Binding SpecifyCommand}"/>
                     <Button Content="Unblock" Padding="10,4" Margin="0,0,6,6" Command="{Binding UnblockCommand}"/>
                     <Button Content="Complete" Padding="10,4" Margin="0,0,6,6" Command="{Binding CompleteCommand}"/>
                     <Button Content="Reclaim" Padding="10,4" Margin="0,0,6,6" Command="{Binding ReclaimCommand}"/>
@@ -221,6 +222,7 @@
                     <TextBox Text="{Binding TaskTenant, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,0,0,8" ToolTip="Tenant"/>
                     <TextBox Text="{Binding TaskSkills, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,0,0,8" ToolTip="Skills"/>
                     <TextBox Text="{Binding TaskParents, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,0,0,8" ToolTip="Parent IDs"/>
+                    <TextBox Text="{Binding TaskMaxRetries, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,0,0,8" ToolTip="Max retries"/>
                     <CheckBox Content="Start in triage" IsChecked="{Binding TaskStartsInTriage}" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
                     <TextBlock Text="{Binding DialogError}" Foreground="#E46362" TextWrapping="Wrap"
                                Visibility="{Binding DialogError, Converter={StaticResource NullToVisibility}}" Margin="0,0,0,12"/>

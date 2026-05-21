@@ -18,4 +18,10 @@ public class SkillInfo
 
     [JsonPropertyName("content")]
     public string? Content { get; set; }
+
+    [JsonPropertyName("relative_path")]
+    public string? RelativePath { get; set; }
+
+    [JsonPropertyName("platforms")]
+    public List<string> Platforms { get; set; } = new();
 }

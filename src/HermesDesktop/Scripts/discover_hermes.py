@@ -58,6 +58,7 @@ try:
     memory_path = hermes_home / "memories" / "MEMORY.md"
     soul_path = hermes_home / "SOUL.md"
     sessions_dir = hermes_home / "sessions"
+    hermes_binary = find_hermes_binary()
 
     result = {
         "ok": True,
@@ -66,6 +67,8 @@ try:
         "hermes_home": tilde(hermes_home, home),
         "profile_name": payload.get("profile_name") or "default",
         "python_version": platform.python_version(),
+        "hermes_cli_available": hermes_binary is not None,
+        "hermes_cli_path": tilde(pathlib.Path(hermes_binary), home) if hermes_binary else None,
         "session_source": None,
         "session_store": None,
         "tracked_files": [],

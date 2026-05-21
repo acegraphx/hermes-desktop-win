@@ -50,6 +50,8 @@ public partial class App : Application
                 services.AddSingleton<IHermesChatService, HermesChatService>();
                 services.AddSingleton<IUpdateCheckService, UpdateCheckService>();
                 services.AddSingleton<IWikiService, WikiService>();
+                services.AddSingleton<IWorkflowStore, WorkflowStore>();
+                services.AddSingleton<WorkflowLaunchDiagnostics>();
                 services.AddSingleton<SshConfigParser>();
 
                 services.AddSingleton<MainViewModel>();
@@ -57,6 +59,7 @@ public partial class App : Application
                 services.AddTransient<OverviewViewModel>();
                 services.AddTransient<FileEditorViewModel>();
                 services.AddTransient<SessionBrowserViewModel>();
+                services.AddTransient<WorkflowsViewModel>();
                 services.AddTransient<UsageBrowserViewModel>();
                 services.AddTransient<SkillBrowserViewModel>();
                 services.AddTransient<CronJobsViewModel>();

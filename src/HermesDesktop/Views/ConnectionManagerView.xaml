@@ -105,7 +105,7 @@
                                 <Border DockPanel.Dock="Right" HorizontalAlignment="Left" Margin="8,0,0,0"
                                         Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3"
                                         Padding="6,1"
-                                        Visibility="{Binding HermesProfile, Converter={StaticResource NullToVisibility}}">
+                                        Visibility="{Binding UsesDefaultHermesProfile, Converter={StaticResource InverseBoolToVisibility}}">
                                     <TextBlock Text="{Binding ResolvedHermesProfileName}" FontSize="10"
                                                Foreground="{DynamicResource BadgeInfoForeground}"/>
                                 </Border>
@@ -147,6 +147,12 @@
                 <TextBox Text="{Binding EditHermesProfile, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="13" Margin="0,0,0,4"
                          ToolTip="Name of Hermes profile under ~/.hermes/profiles/ on the remote host"/>
                 <TextBlock Text="Leave blank to use ~/.hermes (the default profile)." FontSize="11"
+                           Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,8"/>
+
+                <TextBlock Text="Custom Hermes Home (optional)" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding EditCustomHermesHomePath, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" FontSize="13" Margin="0,0,0,4"
+                         ToolTip="Remote Hermes home path. Use either this or Hermes Profile, not both."/>
+                <TextBlock Text="Examples: ~/.hermes, ~/work/hermes-prod, /srv/hermes. Leave blank when using a profile." FontSize="11"
                            Foreground="{DynamicResource TextTertiary}" Margin="0,0,0,16"/>
 
                 <TextBlock Text="Wiki Path (optional)" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>

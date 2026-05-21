@@ -73,6 +73,7 @@ public class KanbanBrowserService : IKanbanBrowserService
         payload["skills"] = draft.Skills;
         payload["triage"] = draft.StartsInTriage;
         payload["parent_ids"] = draft.ParentIds;
+        payload["max_retries"] = draft.NormalizedMaxRetries!;
         var response = await ExecuteMutationAsync(profile, payload, ct);
         return response.TaskId ?? throw new InvalidOperationException("Remote did not return a task ID.");
     }
@@ -119,6 +120,7 @@ public class KanbanBrowserService : IKanbanBrowserService
     {
         ["operation"] = operation,
         ["kanban_home"] = profile.RemoteKanbanHomePath,
+        ["hermes_home"] = profile.RemoteHermesHomePath,
         ["include_archived"] = includeArchived
     };
 
@@ -126,6 +128,7 @@ public class KanbanBrowserService : IKanbanBrowserService
     {
         ["operation"] = "mutate",
         ["kanban_home"] = profile.RemoteKanbanHomePath,
+        ["hermes_home"] = profile.RemoteHermesHomePath,
         ["board_slug"] = boardSlug,
         ["author"] = profile.ResolvedHermesProfileName,
         ["action"] = action

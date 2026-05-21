@@ -15,6 +15,10 @@ var tests = new (string Name, Action Run)[]
     ("Kanban board slug validation", KanbanSlugValidation),
     ("Kanban task draft normalization", KanbanTaskDraftNormalization),
     ("Cron script-only validation", CronScriptOnlyValidation),
+    ("Cron all delivery target", CronAllDeliveryTarget),
+    ("Connection custom Hermes home", ConnectionCustomHermesHome),
+    ("Pinned session snapshot", PinnedSessionSnapshotRoundTrip),
+    ("Workflow launch normalization", WorkflowLaunchNormalization),
     ("Hermes chat arguments", HermesChatArguments),
     ("Resume command quoting", ResumeCommandQuoting),
     ("Update version comparison", UpdateVersionComparison),
@@ -75,6 +79,67 @@ static void KanbanTaskDraftNormalization()
     Assert(draft.NormalizedTitle == "Task", "title trim");
     Assert(draft.Skills.SequenceEqual(["one", "two"]), "skills unique");
     Assert(draft.ParentIds.SequenceEqual(["a", "b"]), "parents unique");
+    draft.MaxRetriesText = "3";
+    Assert(draft.NormalizedMaxRetries == 3, "max retries");
+    draft.MaxRetriesText = "0";
+    Assert(draft.ValidationError == "Max retries must be a whole number greater than 0.", "max retries validation");
+}
+
+static void CronAllDeliveryTarget()
+{
+    Assert(CronDeliveryPreset.All.Title() == "All Connected Channels", "all title");
+    Assert(CronDeliveryPreset.All.ResolvedValue() == "all", "all value");
+    var (preset, custom) = CronDeliveryPresetExtensions.FromDeliveryTarget("all");
+    Assert(preset == CronDeliveryPreset.All && custom == string.Empty, "all parse");
+}
+
+static void ConnectionCustomHermesHome()
+{
+    var profile = new ConnectionProfile { Label = "Prod", SshHost = "host", SshUser = "ace", CustomHermesHomePath = "~/hermes-prod" };
+    Assert(profile.IsValid, profile.ValidationError ?? "custom home valid");
+    Assert(profile.UsesCustomHermesHome, "custom mode");
+    Assert(profile.CliHermesProfileName is null, "no cli profile");
+    Assert(profile.RemoteHermesHomePath == "~/hermes-prod", "remote home");
+    Assert(profile.WorkspaceScopeFingerprint.Contains("~/hermes-prod"), "fingerprint");
+    Assert(profile.RemoteServiceCommand("python3 -").Contains("HERMES_HOME"), "service env");
+}
+
+static void WorkflowLaunchNormalization()
+{
+    var prompt = WorkflowDraft.NormalizePromptForLaunch("  first line \n\n second line  ");
+    Assert(prompt == "first line second line", "prompt compact");
+    var workflow = new WorkflowPreset
+    {
+        Name = "Ship",
+        Prompt = "Investigate",
+        AssignedSkills = [new WorkflowSkillReference { RelativePath = "dev/csharp", Slug = "dev/csharp", Name = "C#" }]
+    };
+    Assert(workflow.MatchesSearch("csharp"), "workflow skill search");
+}
+
+static void PinnedSessionSnapshotRoundTrip()
+{
+    var snapshot = new PinnedSessionSnapshot
+    {
+        Id = "session-123",
+        WorkspaceScopeFingerprint = "host-profile",
+        Title = "Launch follow-up",
+        Model = "gpt-5.2",
+        StartedAt = 1766800000,
+        LastActive = "2026-05-03T18:20:00Z",
+        MessageCount = 18,
+        Preview = "Release checklist",
+        CreatedAt = DateTime.UnixEpoch.AddSeconds(100),
+        UpdatedAt = DateTime.UnixEpoch.AddSeconds(200)
+    };
+
+    var json = JsonSerializer.Serialize(new AppPreferences { PinnedSessions = [snapshot] });
+    var prefs = JsonSerializer.Deserialize<AppPreferences>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    var pinned = prefs?.PinnedSessions.Single();
+    Assert(pinned?.Id == "session-123", "pinned id");
+    Assert(pinned?.WorkspaceScopeFingerprint == "host-profile", "pinned scope");
+    Assert(pinned?.Title == "Launch follow-up", "pinned title");
+    Assert(pinned?.MessageCount == 18, "pinned count");
 }
 
 static void CronScriptOnlyValidation()

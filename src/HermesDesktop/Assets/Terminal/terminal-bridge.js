@@ -96,16 +96,24 @@
         }
     }
 
+    function fitAndEmitResize() {
+        if (terminalEl.clientWidth <= 0 || terminalEl.clientHeight <= 0) return;
+        try { fitAddon.fit(); } catch (e) { return; }
+        emitResizeIfChanged();
+    }
+
     var resizeObserver = new ResizeObserver(function () {
         // Debounce resize events
         if (resizeTimer) clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {
-            if (terminalEl.clientWidth <= 0 || terminalEl.clientHeight <= 0) return;
-            try { fitAddon.fit(); } catch (e) { return; }
-            emitResizeIfChanged();
+            fitAndEmitResize();
         }, 100);
     });
     resizeObserver.observe(terminalEl);
+    window.addEventListener('resize', function () {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(fitAndEmitResize, 100);
+    });
 
     // === Output: C# -> xterm.js ===
     // Called from C# via ExecuteScriptAsync
@@ -156,6 +164,10 @@
         } catch (e) {
             console.error('terminalSetFont error:', e);
         }
+    };
+
+    window.terminalFit = function () {
+        fitAndEmitResize();
     };
 
     // === Font faces: C# -> xterm.js ===

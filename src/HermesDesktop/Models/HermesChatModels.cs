@@ -27,11 +27,13 @@ public class HermesSessionResumeInvocation
 {
     public string SessionId { get; }
     public string? HermesProfileName { get; }
+    public string StartupCommandLine { get; }
 
     public HermesSessionResumeInvocation(string sessionId, ConnectionProfile connection)
     {
         SessionId = sessionId;
-        HermesProfileName = connection.TrimmedHermesProfile;
+        HermesProfileName = connection.CliHermesProfileName;
+        StartupCommandLine = connection.RemoteHermesCommandLine(Arguments);
     }
 
     public List<string> Arguments
@@ -55,6 +57,34 @@ public class HermesSessionResumeInvocation
             return value;
         return "'" + value.Replace("'", "'\\''") + "'";
     }
+}
+
+public class HermesTuiInvocation
+{
+    public string? SessionId { get; }
+    public ConnectionProfile Connection { get; }
+
+    public HermesTuiInvocation(string? sessionId, ConnectionProfile connection)
+    {
+        SessionId = sessionId;
+        Connection = connection;
+    }
+
+    public List<string> Arguments
+    {
+        get
+        {
+            var values = new List<string>();
+            if (!string.IsNullOrWhiteSpace(Connection.CliHermesProfileName))
+                values.AddRange(["--profile", Connection.CliHermesProfileName]);
+            values.Add("--tui");
+            if (!string.IsNullOrWhiteSpace(SessionId))
+                values.AddRange(["--resume", SessionId]);
+            return values;
+        }
+    }
+
+    public string StartupCommandLine => Connection.RemoteHermesCommandLine(Arguments);
 }
 
 public class PendingSessionTurn

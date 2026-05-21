@@ -47,6 +47,9 @@ public partial class ConnectionManagerViewModel : ObservableObject
     private string _editHermesProfile = string.Empty;
 
     [ObservableProperty]
+    private string _editCustomHermesHomePath = string.Empty;
+
+    [ObservableProperty]
     private string _editWikiPath = string.Empty;
 
     private Guid? _editingId;
@@ -83,6 +86,7 @@ public partial class ConnectionManagerViewModel : ObservableObject
         EditPort = 22;
         EditKeyPath = "";
         EditHermesProfile = "";
+        EditCustomHermesHomePath = "";
         EditWikiPath = "";
         TestResult = null;
         IsEditing = true;
@@ -98,6 +102,7 @@ public partial class ConnectionManagerViewModel : ObservableObject
         EditPort = profile.SshPort;
         EditKeyPath = profile.SshKeyPath ?? "";
         EditHermesProfile = profile.HermesProfile ?? "";
+        EditCustomHermesHomePath = profile.CustomHermesHomePath ?? "";
         EditWikiPath = profile.WikiPath ?? "";
         TestResult = null;
         IsEditing = true;
@@ -118,10 +123,17 @@ public partial class ConnectionManagerViewModel : ObservableObject
                             string.Equals(EditHermesProfile.Trim(), "default", StringComparison.OrdinalIgnoreCase)
                 ? null
                 : EditHermesProfile.Trim(),
+            CustomHermesHomePath = string.IsNullOrWhiteSpace(EditCustomHermesHomePath)
+                ? null
+                : EditCustomHermesHomePath.Trim(),
             WikiPath = string.IsNullOrWhiteSpace(EditWikiPath) ? null : EditWikiPath.Trim(),
         };
 
-        if (!profile.IsValid) return;
+        if (!profile.IsValid)
+        {
+            TestResult = profile.ValidationError;
+            return;
+        }
 
         await _connectionStore.SaveConnectionAsync(profile);
         _mainVm.RefreshConnections();
@@ -201,6 +213,13 @@ public partial class ConnectionManagerViewModel : ObservableObject
             SshUser = EditUser.Trim(),
             SshPort = EditPort,
             SshKeyPath = string.IsNullOrWhiteSpace(EditKeyPath) ? null : EditKeyPath.Trim(),
+            HermesProfile = string.IsNullOrWhiteSpace(EditHermesProfile) ||
+                            string.Equals(EditHermesProfile.Trim(), "default", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : EditHermesProfile.Trim(),
+            CustomHermesHomePath = string.IsNullOrWhiteSpace(EditCustomHermesHomePath)
+                ? null
+                : EditCustomHermesHomePath.Trim(),
         };
 
         if (!profile.IsValid)

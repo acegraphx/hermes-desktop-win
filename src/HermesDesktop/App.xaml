@@ -29,6 +29,9 @@
             <DataTemplate DataType="{x:Type vm:SessionBrowserViewModel}">
                 <views:SessionBrowserView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:WorkflowsViewModel}">
+                <views:WorkflowsView/>
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:KanbanViewModel}">
                 <views:KanbanView/>
             </DataTemplate>
@@ -45,7 +48,7 @@
                 <views:WikiBrowserView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:TerminalViewModel}">
-                <views:TerminalView/>
+                <views:TerminalView HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
             </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>

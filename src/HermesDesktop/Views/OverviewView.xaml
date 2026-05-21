@@ -39,6 +39,29 @@
                 <TextBlock Text="{Binding Overview.SessionStore}" FontSize="14"
                            Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,12"/>
 
+                <Border Background="{DynamicResource CardBackground}" CornerRadius="6"
+                        BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1"
+                        Padding="12" Margin="0,4,0,16">
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding ChatReadinessBadge}" FontSize="12"
+                                       Foreground="{DynamicResource TextSecondary}" Margin="12,0,0,0"/>
+                            <TextBlock Text="Chat" FontSize="16" FontWeight="Medium"
+                                       Foreground="{DynamicResource TextPrimary}"/>
+                        </DockPanel>
+                        <TextBlock Text="{Binding ChatReadinessTitle}" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}" Margin="0,8,0,2"/>
+                        <TextBlock Text="{Binding ChatReadinessDetail}" FontSize="12"
+                                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Transport" FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,10,0,0"/>
+                        <TextBlock Text="Hermes TUI over SSH" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="Hermes CLI" FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding Overview.HermesCliPath, TargetNullValue='Not found'}" FontSize="13"
+                                   Foreground="{DynamicResource TextPrimary}" FontFamily="Consolas"/>
+                    </StackPanel>
+                </Border>
+
                 <TextBlock Text="Active Hermes Profile" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                            Visibility="{Binding Overview.ProfileName, Converter={StaticResource NullToVisibility}}"/>
                 <TextBlock Text="{Binding Overview.ProfileName}" FontSize="14"

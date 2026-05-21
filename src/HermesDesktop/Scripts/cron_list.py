@@ -50,14 +50,22 @@ def normalize_date(value):
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(float(value), tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(float(value), tz=timezone.utc).isoformat(timespec="seconds")
 
     text = normalize_text(value)
     if text is None:
         return None
 
     try:
-        return datetime.fromtimestamp(float(text), tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(float(text), tz=timezone.utc).isoformat(timespec="seconds")
+    except Exception:
+        pass
+
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc)
+        return parsed.isoformat(timespec="seconds")
     except Exception:
         return text
 

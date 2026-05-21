@@ -22,6 +22,7 @@ public partial class TerminalControl : UserControl, IDisposable
     private string? _pendingFontFamily;
     private int? _pendingFontSize;
     private TerminalThemeAppearance? _pendingTheme;
+    private CancellationTokenSource? _fitCts;
     private readonly ILogger? _logger;
 
     public TerminalControl()
@@ -30,6 +31,7 @@ public partial class TerminalControl : UserControl, IDisposable
         Focusable = true;
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewTextInput += OnPreviewTextInput;
+        SizeChanged += OnSizeChanged;
     }
 
     public TerminalControl(ILogger logger) : this()
@@ -210,6 +212,7 @@ public partial class TerminalControl : UserControl, IDisposable
                         await ApplyFontAsync(font, size);
                     }
                     await TerminalWebView.CoreWebView2.ExecuteScriptAsync("terminalFocus()");
+                    RequestFit();
                     break;
             }
         }
@@ -341,6 +344,43 @@ public partial class TerminalControl : UserControl, IDisposable
         }
     }
 
+    public void RequestFit()
+    {
+        _fitCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _fitCts = cts;
+        _ = Dispatcher.InvokeAsync(async () =>
+        {
+            try
+            {
+                await Task.Delay(100, cts.Token);
+                if (cts.IsCancellationRequested)
+                    return;
+                await FitAsync();
+            }
+            catch (OperationCanceledException) { }
+        }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private async Task FitAsync()
+    {
+        if (!_isReady || TerminalWebView.CoreWebView2 is null || ActualWidth <= 0 || ActualHeight <= 0)
+            return;
+        try
+        {
+            await TerminalWebView.CoreWebView2.ExecuteScriptAsync("terminalFit()");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "Failed to fit terminal");
+        }
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        RequestFit();
+    }
+
     public new void Focus()
     {
         // Give this UserControl WPF keyboard focus so PreviewKeyDown/PreviewTextInput fire
@@ -451,6 +491,8 @@ public partial class TerminalControl : UserControl, IDisposable
     {
         _readCts?.Cancel();
         _readCts?.Dispose();
+        _fitCts?.Cancel();
+        _fitCts?.Dispose();
 
         try { _shellStream?.Dispose(); } catch { }
         try { _sshClient?.Dispose(); } catch { }

@@ -36,7 +36,10 @@ public partial class TerminalView : UserControl
         foreach (var tab in _vm.Tabs)
         {
             if (tab.TerminalControl is { } control && !TerminalHostGrid.Children.Contains(control))
+            {
+                PrepareTerminalControlLayout(control);
                 TerminalHostGrid.Children.Add(control);
+            }
         }
 
         SwitchToActiveTab();
@@ -89,6 +92,7 @@ public partial class TerminalView : UserControl
         if (activeTab.TerminalControl == null)
         {
             var control = new TerminalControl();
+            PrepareTerminalControlLayout(control);
             activeTab.TerminalControl = control;
 
             // Stash font + theme on the control so the WebView2 'ready' handshake
@@ -108,6 +112,7 @@ public partial class TerminalView : UserControl
         }
 
         activeTab.TerminalControl.Visibility = Visibility.Visible;
+        activeTab.TerminalControl.RequestFit();
 
         // Ensure the terminal gets keyboard focus
         FocusTerminalAsync(activeTab.TerminalControl);
@@ -120,6 +125,12 @@ public partial class TerminalView : UserControl
             System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
 
+    private static void PrepareTerminalControlLayout(TerminalControl control)
+    {
+        control.HorizontalAlignment = HorizontalAlignment.Stretch;
+        control.VerticalAlignment = VerticalAlignment.Stretch;
+    }
+
     private void TerminalHostGrid_MouseDown(object sender, MouseButtonEventArgs e)
     {
         // Clicking in the terminal area should focus the active terminal
@@ -127,6 +138,11 @@ public partial class TerminalView : UserControl
         {
             control.Focus();
         }
+    }
+
+    private void TerminalHostGrid_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        _vm?.ActiveTab?.TerminalControl?.RequestFit();
     }
 
     private void TabHeader_Click(object sender, MouseButtonEventArgs e)

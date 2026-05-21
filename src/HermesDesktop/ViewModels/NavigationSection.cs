@@ -6,6 +6,7 @@ public enum NavigationSection
     Overview,
     Files,
     Sessions,
+    Workflows,
     Kanban,
     Usage,
     Skills,

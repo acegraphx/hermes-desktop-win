@@ -18,7 +18,6 @@ public partial class WikiBrowserViewModel : ObservableObject
     private CancellationTokenSource? _searchCts;
     private CancellationTokenSource? _previewCts;
     private CancellationTokenSource? _autosaveCts;
-    private bool _suppressViewModePersist;
 
     [ObservableProperty]
     private string? _wikiRoot;
@@ -147,15 +146,9 @@ public partial class WikiBrowserViewModel : ObservableObject
 
         var prefs = _connectionStore.Preferences;
         _splitEditorRatio = Math.Clamp(prefs.WikiSplitEditorRatio, 0.1, 0.9);
-        _suppressViewModePersist = true;
-        try
-        {
-            ViewMode = ParseViewMode(prefs.WikiViewMode);
-        }
-        finally
-        {
-            _suppressViewModePersist = false;
-        }
+        ViewMode = WikiViewMode.Preview;
+        if (!string.Equals(prefs.WikiViewMode, WikiViewMode.Preview.ToString(), StringComparison.Ordinal))
+            _ = PersistViewModeAsync(WikiViewMode.Preview);
 
         _ = LoadEntriesAsync();
     }
@@ -574,8 +567,7 @@ public partial class WikiBrowserViewModel : ObservableObject
                 break;
         }
 
-        if (!_suppressViewModePersist)
-            _ = PersistViewModeAsync(value);
+        _ = PersistViewModeAsync(value);
     }
 
     public void UpdateSplitRatio(double editorFraction)

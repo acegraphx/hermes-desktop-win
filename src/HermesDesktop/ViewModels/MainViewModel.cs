@@ -67,7 +67,8 @@ public partial class MainViewModel : ObservableObject
         new() { Section = NavigationSection.Connections, Label = "Connections", IconGlyph = "\uE774" },
         new() { Section = NavigationSection.Overview, Label = "Overview", IconGlyph = "\uE80F", RequiresConnection = true },
         new() { Section = NavigationSection.Files, Label = "Files", IconGlyph = "\uE8A5", RequiresConnection = true },
-        new() { Section = NavigationSection.Sessions, Label = "Sessions", IconGlyph = "\uE8BD", RequiresConnection = true },
+        new() { Section = NavigationSection.Sessions, Label = "Sessions", IconGlyph = "\uE8F2", RequiresConnection = true },
+        new() { Section = NavigationSection.Workflows, Label = "Workflows", IconGlyph = "\uE8A4", RequiresConnection = true },
         new() { Section = NavigationSection.Kanban, Label = "Kanban", IconGlyph = "\uE8FD", RequiresConnection = true },
         new() { Section = NavigationSection.Usage, Label = "Usage", IconGlyph = "\uE9D2", RequiresConnection = true },
         new() { Section = NavigationSection.Skills, Label = "Skills", IconGlyph = "\uE82D", RequiresConnection = true },
@@ -256,6 +257,7 @@ public partial class MainViewModel : ObservableObject
             NavigationSection.Overview => _serviceProvider.GetRequiredService<OverviewViewModel>(),
             NavigationSection.Files => _serviceProvider.GetRequiredService<FileEditorViewModel>(),
             NavigationSection.Sessions => _serviceProvider.GetRequiredService<SessionBrowserViewModel>(),
+            NavigationSection.Workflows => _serviceProvider.GetRequiredService<WorkflowsViewModel>(),
             NavigationSection.Kanban => _serviceProvider.GetRequiredService<KanbanViewModel>(),
             NavigationSection.Usage => _serviceProvider.GetRequiredService<UsageBrowserViewModel>(),
             NavigationSection.Skills => _serviceProvider.GetRequiredService<SkillBrowserViewModel>(),
@@ -329,7 +331,7 @@ public partial class MainViewModel : ObservableObject
         NavigateWithIntent(NavigationSection.Sessions, () =>
         {
             if (CurrentContentViewModel is SessionBrowserViewModel session)
-                session.ChatPrompt = string.Empty;
+                session.StartTuiChatCommand.Execute(null);
         });
     }
 

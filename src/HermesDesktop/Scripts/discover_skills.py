@@ -21,6 +21,7 @@ def parse_frontmatter(content, rel_path):
     version = None
     category = None
     tags = []
+    platforms = []
 
     fm_text = extract_frontmatter(content)
     if fm_text:
@@ -38,7 +39,8 @@ def parse_frontmatter(content, rel_path):
                     tags = metadata.get("tags", [])
                     if not isinstance(tags, list):
                         tags = []
-                return name, description, version, category, tags
+                platforms = normalize_text_list(data.get("platforms") or metadata.get("platforms"))
+                return name, description, version, category, tags, platforms
         except Exception:
             pass
 
@@ -50,7 +52,7 @@ def parse_frontmatter(content, rel_path):
     if len(parts) > 1:
         category = parts[0]
 
-    return name, description, version, category, tags
+    return name, description, version, category, tags, platforms
 
 
 def normalize_text_list(value):
@@ -186,7 +188,7 @@ def collect_items(source):
 
         try:
             content = skill_file.read_text(encoding="utf-8", errors="replace")
-            name, description, version, category, tags = parse_frontmatter(content, rel)
+            name, description, version, category, tags, platforms = parse_frontmatter(content, rel)
             rel_path = skill_file.parent.relative_to(root).as_posix()
 
             if not category and "/" in rel_path:
@@ -201,6 +203,7 @@ def collect_items(source):
                 "category": category,
                 "relative_path": rel_path,
                 "tags": tags,
+                "platforms": platforms,
                 "source_id": source["id"],
                 "source_kind": source["kind"],
                 "source_label": "Local" if source["kind"] == "local" else "External",

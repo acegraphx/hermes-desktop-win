@@ -19,6 +19,12 @@ public class AppPreferences
     [JsonPropertyName("lastWikiRelativePathByConnection")]
     public Dictionary<string, string> LastWikiRelativePathByConnection { get; set; } = new();
 
+    [JsonPropertyName("pinnedSessionIdsByWorkspace")]
+    public Dictionary<string, List<string>> PinnedSessionIdsByWorkspace { get; set; } = new();
+
+    [JsonPropertyName("pinnedSessions")]
+    public List<PinnedSessionSnapshot> PinnedSessions { get; set; } = new();
+
     [JsonPropertyName("sidebarCollapsed")]
     public bool SidebarCollapsed { get; set; }
 
@@ -42,4 +48,37 @@ public class AppPreferences
 
     [JsonPropertyName("lastDismissedRelease")]
     public string? LastDismissedRelease { get; set; }
+}
+
+public class PinnedSessionSnapshot
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("workspaceScopeFingerprint")]
+    public string WorkspaceScopeFingerprint { get; set; } = string.Empty;
+
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+
+    [JsonPropertyName("model")]
+    public string? Model { get; set; }
+
+    [JsonPropertyName("startedAt")]
+    public object? StartedAt { get; set; }
+
+    [JsonPropertyName("lastActive")]
+    public object? LastActive { get; set; }
+
+    [JsonPropertyName("messageCount")]
+    public int? MessageCount { get; set; }
+
+    [JsonPropertyName("preview")]
+    public string? Preview { get; set; }
+
+    [JsonPropertyName("createdAt")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("updatedAt")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

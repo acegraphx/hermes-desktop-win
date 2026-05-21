@@ -2,8 +2,10 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:HermesDesktop.ViewModels"
+             HorizontalAlignment="Stretch"
+             VerticalAlignment="Stretch"
              Loaded="OnLoaded" Unloaded="OnUnloaded">
-    <DockPanel>
+    <DockPanel HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <!-- Tab bar -->
         <Border DockPanel.Dock="Top" Background="{DynamicResource PanelBackground}" Padding="4,4,4,0"
                 BorderBrush="{DynamicResource PanelBorder}" BorderThickness="0,0,0,1">
@@ -85,6 +87,7 @@
 
         <!-- Terminal content area - managed in code-behind (always dark) -->
         <Grid x:Name="TerminalHostGrid" Background="#0F1011"
+              SizeChanged="TerminalHostGrid_SizeChanged"
               MouseLeftButtonDown="TerminalHostGrid_MouseDown">
             <!-- Empty state -->
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"

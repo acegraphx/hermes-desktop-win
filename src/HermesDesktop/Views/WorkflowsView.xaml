@@ -1,0 +1,116 @@
+<UserControl x:Class="HermesDesktop.Views.WorkflowsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="360" MinWidth="280"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Column="0">
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <Button DockPanel.Dock="Right" Content="New" Padding="12,5"
+                        Style="{StaticResource AccentButton}"
+                        Command="{Binding NewWorkflowCommand}"/>
+                <TextBlock Text="Workflows" FontSize="22" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+            </DockPanel>
+            <TextBox DockPanel.Dock="Top" Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged, Delay=200}"
+                     Padding="8,6" Margin="0,0,0,8" ToolTip="Search workflows"/>
+            <TextBlock DockPanel.Dock="Top" Text="Loading workflows..." Foreground="{DynamicResource TextTertiary}"
+                       Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}"/>
+            <ListView ItemsSource="{Binding Workflows}" SelectedItem="{Binding SelectedWorkflow}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="4,6">
+                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Medium"
+                                       Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding PromptPreview}" FontSize="11"
+                                       Foreground="{DynamicResource TextMuted}" TextWrapping="Wrap" MaxHeight="42"
+                                       Margin="0,3,0,0"/>
+                            <TextBlock FontSize="10" Foreground="{DynamicResource TextTertiary}" Margin="0,4,0,0">
+                                <Run Text="{Binding AssignedSkills.Count, Mode=OneWay}"/>
+                                <Run Text=" skills"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch" Background="{DynamicResource SplitterBrush}" Margin="8,0"/>
+
+        <Grid Grid.Column="2">
+            <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibility}}">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#E46362" TextWrapping="Wrap"
+                           Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibility}}" Margin="0,0,0,10"/>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap"
+                           Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibility}}" Margin="0,0,0,10"/>
+
+                <TextBlock Text="{Binding SelectedWorkflow.Name, TargetNullValue='Select or create a workflow'}"
+                           FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"
+                           Margin="0,0,0,8"/>
+                <TextBlock Text="{Binding SelectedWorkflow.Prompt}" FontSize="13"
+                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                <ItemsControl ItemsSource="{Binding SelectedWorkflow.AssignedSkills}" Margin="0,0,0,16">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource BadgeInfoBackground}" CornerRadius="3"
+                                    Padding="6,2" Margin="0,0,6,6">
+                                <TextBlock Text="{Binding ResolvedName}" FontSize="11"
+                                           Foreground="{DynamicResource BadgeInfoForeground}"/>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <WrapPanel>
+                    <Button Content="Run in Chat" Padding="12,5" Margin="0,0,8,8"
+                            Style="{StaticResource AccentButton}"
+                            Command="{Binding RunInChatCommand}" CommandParameter="{Binding SelectedWorkflow}"/>
+                    <Button Content="Run in Terminal" Padding="12,5" Margin="0,0,8,8"
+                            Command="{Binding RunInTerminalCommand}" CommandParameter="{Binding SelectedWorkflow}"/>
+                    <Button Content="Edit" Padding="12,5" Margin="0,0,8,8"
+                            Command="{Binding EditWorkflowCommand}" CommandParameter="{Binding SelectedWorkflow}"/>
+                    <Button Content="Delete" Padding="12,5" Margin="0,0,8,8"
+                            Style="{StaticResource DangerButton}"
+                            Command="{Binding DeleteWorkflowCommand}" CommandParameter="{Binding SelectedWorkflow}"/>
+                    <Button Content="Refresh" Padding="12,5" Margin="0,0,8,8"
+                            Command="{Binding RefreshCommand}"/>
+                </WrapPanel>
+            </StackPanel>
+
+            <ScrollViewer Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel MaxWidth="720">
+                    <TextBlock Text="Workflow" FontSize="20" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Name" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding DraftName, UpdateSourceTrigger=PropertyChanged}" Padding="8,6" Margin="0,0,0,12"/>
+                    <TextBlock Text="Prompt" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding DraftPrompt, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
+                             TextWrapping="Wrap" MinHeight="180" Padding="8,6" Margin="0,0,0,12"/>
+                    <TextBlock Text="Skills" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                    <ListBox ItemsSource="{Binding AvailableSkills}" MaxHeight="220" Margin="0,0,0,12">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected}" Foreground="{DynamicResource TextPrimary}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" FontSize="12"/>
+                                        <TextBlock Text="{Binding RelativePath}" FontSize="10"
+                                                   Foreground="{DynamicResource TextTertiary}"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Padding="16,6" Margin="0,0,8,0" Command="{Binding CancelEditCommand}"/>
+                        <Button Content="Save" Padding="16,6" Style="{StaticResource AccentButton}" Command="{Binding SaveWorkflowCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

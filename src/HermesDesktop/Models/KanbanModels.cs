@@ -120,6 +120,7 @@ public class KanbanTask
     [JsonPropertyName("worker_pid")] public int? WorkerPid { get; set; }
     [JsonPropertyName("last_spawn_error")] public string? LastSpawnError { get; set; }
     [JsonPropertyName("max_runtime_seconds")] public int? MaxRuntimeSeconds { get; set; }
+    [JsonPropertyName("max_retries")] public int? MaxRetries { get; set; }
     [JsonPropertyName("last_heartbeat_at")] public int? LastHeartbeatAt { get; set; }
     [JsonPropertyName("current_run_id")] public int? CurrentRunId { get; set; }
     [JsonPropertyName("parent_ids")] public List<string> ParentIds { get; set; } = new();
@@ -139,6 +140,7 @@ public class KanbanTask
     };
     [JsonIgnore] public string PriorityLabel => Priority > 0 ? $"P+{Priority}" : $"P{Priority}";
     [JsonIgnore] public bool HasActiveWarnings => Warnings?.HasWarnings == true;
+    [JsonIgnore] public bool CanSpecify => string.Equals(Status, "triage", StringComparison.OrdinalIgnoreCase);
     [JsonIgnore] public DateTime? LatestActivityDate => (LatestEventAt ?? CompletedAt ?? StartedAt ?? CreatedAt) is { } v
         ? DateTimeOffset.FromUnixTimeSeconds(v).LocalDateTime
         : null;
@@ -277,6 +279,7 @@ public class KanbanTaskDraft
     public string Tenant { get; set; } = string.Empty;
     public string SkillsText { get; set; } = string.Empty;
     public string ParentIdsText { get; set; } = string.Empty;
+    public string MaxRetriesText { get; set; } = string.Empty;
     public bool StartsInTriage { get; set; }
 
     public string NormalizedTitle => (Title ?? string.Empty).Trim();
@@ -285,7 +288,18 @@ public class KanbanTaskDraft
     public string? NormalizedTenant => NormalizeOptional(Tenant);
     public List<string> Skills => NormalizedCommaList(SkillsText);
     public List<string> ParentIds => NormalizedIdList(ParentIdsText);
-    public string? ValidationError => string.IsNullOrEmpty(NormalizedTitle) ? "Task title is required." : null;
+    public int? NormalizedMaxRetries
+    {
+        get
+        {
+            var value = (MaxRetriesText ?? string.Empty).Trim();
+            return value.Length == 0 ? null : int.TryParse(value, out var n) ? n : null;
+        }
+    }
+    public string? ValidationError =>
+        string.IsNullOrEmpty(NormalizedTitle) ? "Task title is required." :
+        !string.IsNullOrWhiteSpace(MaxRetriesText) && NormalizedMaxRetries is not > 0 ? "Max retries must be a whole number greater than 0." :
+        null;
 
     public static List<string> NormalizedCommaList(string value) =>
         Unique((value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));

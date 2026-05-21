@@ -1417,6 +1417,9 @@ elif operation == 'mutate':
                 }
                 if supports_keyword(kb.create_task, "parents"):
                     kwargs["parents"] = parent_ids
+                max_retries = payload.get("max_retries")
+                if max_retries is not None and supports_keyword(kb.create_task, "max_retries"):
+                    kwargs["max_retries"] = int(max_retries)
                 created_id = kb.create_task(conn, **kwargs)
                 return ("Kanban task created.", created_id, None)
 
@@ -1429,6 +1432,15 @@ elif operation == 'mutate':
                     fail("Comment text is required.")
                 kb.add_comment(conn, task_id, author, text)
                 return ("Comment added.", task_id, None)
+
+            if action == "specify":
+                if hasattr(kb, "specify_task"):
+                    result = kb.specify_task(conn, task_id)
+                    if result is False:
+                        fail(f"Cannot specify Kanban task: {task_id}")
+                    return ("Task promoted through specify.", task_id, None)
+                run_hermes_cli(kanban_cli_args(board_slug, ["specify", task_id]))
+                return ("Task promoted through specify.", task_id, None)
 
             if action == "update_fields":
                 update_task_fields(kb, conn, task_id)
@@ -1569,6 +1581,9 @@ elif operation == 'mutate':
                 args.extend(["--priority", str(priority)])
             if bool(payload.get("triage")):
                 args.append("--triage")
+            max_retries = payload.get("max_retries")
+            if max_retries is not None:
+                args.extend(["--max-retries", str(int(max_retries))])
             for skill in payload.get("skills") or []:
                 skill_text = normalize_text(skill)
                 if skill_text:
@@ -1588,6 +1603,10 @@ elif operation == 'mutate':
                 fail("Comment text is required.")
             run_hermes_cli(kanban_cli_args(board_slug, ["comment", "--author", author, task_id, text]))
             return ("Comment added.", task_id, None)
+
+        if action == "specify":
+            run_hermes_cli(kanban_cli_args(board_slug, ["specify", task_id]))
+            return ("Task promoted through specify.", task_id, None)
 
         if action == "update_fields":
             db_path = kanban_db_path(board_slug)

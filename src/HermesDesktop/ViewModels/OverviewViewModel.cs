@@ -19,6 +19,17 @@ public partial class OverviewViewModel : ObservableObject
     public bool HasMultipleProfiles =>
         Overview?.AvailableProfiles is { Count: > 1 };
 
+    public string ChatReadinessTitle =>
+        Overview?.HermesCliAvailable == true ? "Hermes TUI ready" : "Hermes TUI needs attention";
+
+    public string ChatReadinessDetail =>
+        Overview?.HermesCliAvailable == true
+            ? "Chat runs inside the real Hermes TUI; transcripts are read back from the selected host."
+            : "The remote hermes CLI was not found on the prepared SSH PATH.";
+
+    public string ChatReadinessBadge =>
+        Overview?.HermesCliAvailable == true ? "TUI ready" : "Check host";
+
     [ObservableProperty]
     private bool _isLoading;
 
@@ -42,6 +53,9 @@ public partial class OverviewViewModel : ObservableObject
     partial void OnOverviewChanged(HermesOverview? value)
     {
         OnPropertyChanged(nameof(HasMultipleProfiles));
+        OnPropertyChanged(nameof(ChatReadinessTitle));
+        OnPropertyChanged(nameof(ChatReadinessDetail));
+        OnPropertyChanged(nameof(ChatReadinessBadge));
     }
 
     [RelayCommand]

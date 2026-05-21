@@ -15,6 +15,7 @@ public partial class TerminalViewModel : ObservableObject
     private readonly ISshTransport _sshTransport;
     private readonly MainViewModel _mainVm;
     private readonly IConnectionStore _connectionStore;
+    private readonly WorkflowLaunchDiagnostics _workflowLaunchDiagnostics;
     private readonly ILogger<TerminalViewModel> _logger;
 
     [ObservableProperty]
@@ -56,11 +57,13 @@ public partial class TerminalViewModel : ObservableObject
         ISshTransport sshTransport,
         MainViewModel mainVm,
         IConnectionStore connectionStore,
+        WorkflowLaunchDiagnostics workflowLaunchDiagnostics,
         ILogger<TerminalViewModel> logger)
     {
         _sshTransport = sshTransport;
         _mainVm = mainVm;
         _connectionStore = connectionStore;
+        _workflowLaunchDiagnostics = workflowLaunchDiagnostics;
         _logger = logger;
 
         CurrentThemeStyle = _connectionStore.Preferences.TerminalTheme.Style;
@@ -212,7 +215,10 @@ public partial class TerminalViewModel : ObservableObject
     [RelayCommand]
     private Task NewTabAsync() => OpenTabWithStartupCommandAsync(null);
 
-    public async Task OpenTabWithStartupCommandAsync(string? startupCommand)
+    public Task OpenTabWithStartupCommandAsync(string? startupCommand) =>
+        OpenTabWithStartupCommandAsync(startupCommand, null, null);
+
+    public async Task OpenTabWithStartupCommandAsync(string? startupCommand, string? initialInput, string? titleOverride)
     {
         if (_mainVm.ActiveConnection == null)
         {
@@ -230,7 +236,7 @@ public partial class TerminalViewModel : ObservableObject
             {
                 try
                 {
-                    var command = BuildStartupShellCommand(_mainVm.ActiveConnection, startupCommand) + "\n";
+                    var command = _mainVm.ActiveConnection.RemoteShellBootstrapCommandWithStartup(startupCommand) + "\n";
                     var bytes = System.Text.Encoding.UTF8.GetBytes(command);
                     await session.Stream.WriteAsync(bytes, 0, bytes.Length);
                     await session.Stream.FlushAsync();
@@ -256,11 +262,29 @@ public partial class TerminalViewModel : ObservableObject
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(initialInput))
+            {
+                try
+                {
+                    await Task.Delay(1200);
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(initialInput.Replace("\r\n", "\n").Replace("\n", "\r") + "\r");
+                    await session.Stream.WriteAsync(bytes, 0, bytes.Length);
+                    await session.Stream.FlushAsync();
+                    await _workflowLaunchDiagnostics.RecordInitialInputSentAsync(titleOverride ?? "Terminal", initialInput.Length, "startup_input");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to send terminal startup input");
+                }
+            }
+
             var title = !_mainVm.ActiveConnection.UsesDefaultHermesProfile
                 ? $"{_mainVm.ActiveConnection.Label} ({_mainVm.ActiveConnection.ResolvedHermesProfileName})"
                 : _mainVm.ActiveConnection.Label ?? $"Terminal {Tabs.Count + 1}";
             if (!string.IsNullOrWhiteSpace(startupCommand))
                 title = $"Hermes resume - {_mainVm.ActiveConnection.Label}";
+            if (!string.IsNullOrWhiteSpace(titleOverride))
+                title = titleOverride;
 
             var tab = new TerminalTabViewModel(session, title,
                 _mainVm.ActiveConnection,
@@ -274,17 +298,6 @@ public partial class TerminalViewModel : ObservableObject
             _logger.LogError(ex, "Failed to open terminal tab");
         }
     }
-
-    private static string BuildStartupShellCommand(ConnectionProfile profile, string startupCommand)
-    {
-        var command = $"exec \"${{SHELL:-/bin/bash}}\" -lc {ShellQuote(startupCommand)}";
-        if (profile.UsesDefaultHermesProfile) return command;
-        var homeExpr = $"$HOME/.hermes/profiles/{profile.ResolvedHermesProfileName.Replace("\"", "\\\"")}";
-        return $"export HERMES_HOME=\"{homeExpr}\"; {command}";
-    }
-
-    private static string ShellQuote(string value) =>
-        "'" + value.Replace("'", "'\\''") + "'";
 
     [RelayCommand]
     private void CloseTab(TerminalTabViewModel tab)
