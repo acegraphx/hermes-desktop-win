@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using HermesDesktop.Helpers;
 using HermesDesktop.Models;
 using HermesDesktop.Services;
@@ -72,6 +73,7 @@ public partial class WikiPreviewControl : UserControl
         try
         {
             await PreviewWebView.EnsureCoreWebView2Async();
+            PreviewWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
 
             var assetsPath = AppAssets.ResolveAssetFolder("Wiki", "preview.html");
             if (assetsPath != null)
@@ -169,6 +171,25 @@ public partial class WikiPreviewControl : UserControl
             }
         }
         catch { /* ignore malformed bridge messages */ }
+    }
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (PreviewWebView.CoreWebView2 == null) return;
+        var mod = Keyboard.Modifiers;
+        if (mod == ModifierKeys.Control)
+        {
+            if (e.Key == Key.C)
+            {
+                _ = PreviewWebView.CoreWebView2.ExecuteScriptAsync("document.execCommand('copy')");
+                e.Handled = true;
+            }
+            else if (e.Key == Key.A)
+            {
+                _ = PreviewWebView.CoreWebView2.ExecuteScriptAsync("document.execCommand('selectAll')");
+                e.Handled = true;
+            }
+        }
     }
 
     private static void OnRenderInputChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
