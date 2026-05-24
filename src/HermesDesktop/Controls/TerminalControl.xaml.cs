@@ -409,10 +409,20 @@ public partial class TerminalControl : UserControl, IDisposable
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (_shellStream == null) return;
-
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var mod = Keyboard.Modifiers;
+
+        // Ctrl+Shift+C → copy terminal selection to clipboard (must be first, before shell-stream check)
+        if (mod == (ModifierKeys.Control | ModifierKeys.Shift) && key == Key.C)
+        {
+            if (TerminalWebView.CoreWebView2 != null)
+                _ = TerminalWebView.CoreWebView2.ExecuteScriptAsync("document.execCommand('copy')");
+            e.Handled = true;
+            return;
+        }
+
+        if (_shellStream == null) return;
+
         byte[]? bytes = null;
 
         // Ctrl+key → control characters (0x01–0x1A)

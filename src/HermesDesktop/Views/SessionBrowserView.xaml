@@ -155,8 +155,10 @@
                                     <TextBlock Text="{Binding Timestamp, Converter={StaticResource RelativeDate}}"
                                                FontSize="10" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Right"/>
                                 </DockPanel>
-                                <TextBlock Text="{Binding Content}" FontSize="13" TextWrapping="Wrap"
-                                           MaxHeight="300" Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBox Text="{Binding Content, Mode=OneWay}" FontSize="13" TextWrapping="Wrap"
+                                         MaxHeight="300" Foreground="{DynamicResource TextPrimary}"
+                                         IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                                         Padding="0" IsTabStop="False" Cursor="IBeam"/>
                             </StackPanel>
                         </Border>
                     </DataTemplate>

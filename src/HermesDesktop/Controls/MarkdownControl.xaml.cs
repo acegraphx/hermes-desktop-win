@@ -32,6 +32,7 @@ public partial class MarkdownControl : UserControl
         try
         {
             await MarkdownWebView.EnsureCoreWebView2Async();
+            MarkdownWebView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
 
             var assetsPath = AppAssets.ResolveAssetFolder("Markdown", "markdown.html");
             if (assetsPath != null)
@@ -44,6 +45,11 @@ public partial class MarkdownControl : UserControl
             MarkdownWebView.CoreWebView2.NavigationCompleted += (_, _) =>
             {
                 _isReady = true;
+                _ = MarkdownWebView.CoreWebView2.ExecuteScriptAsync(
+                    "document.addEventListener('keydown', function(e) {" +
+                    "  if (e.ctrlKey && e.key === 'c') { document.execCommand('copy'); }" +
+                    "  if (e.ctrlKey && e.key === 'a') { document.execCommand('selectAll'); }" +
+                    "});");
                 if (_pendingContent != null)
                     RenderContent(_pendingContent);
             };

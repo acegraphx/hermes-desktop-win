@@ -198,6 +198,24 @@
         }
     };
 
+    // === Ctrl+Shift+C: copy selected text to clipboard ===
+    // WPF's PreviewKeyDown never fires once xterm.js owns Win32 focus, so the
+    // shortcut must be intercepted here. attachCustomKeyEventHandler returning
+    // false prevents xterm from processing the key further.
+    terminal.attachCustomKeyEventHandler(function (e) {
+        if (e.type === 'keydown' && e.ctrlKey && e.shiftKey && e.key === 'C') {
+            var selection = terminal.getSelection();
+            if (selection) {
+                navigator.clipboard.writeText(selection).catch(function () {
+                    // navigator.clipboard may be blocked; fall back to execCommand
+                    document.execCommand('copy');
+                });
+            }
+            return false;
+        }
+        return true;
+    });
+
     // === Focus management ===
     window.terminalFocus = function () {
         terminal.focus();
